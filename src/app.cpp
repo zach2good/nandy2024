@@ -31,7 +31,7 @@ App::App(std::string const& title, std::size_t width, std::size_t height)
 
     // TODO: LogicSim should encapsulate it's own thread - that's an implementation detail.
     m_LogicSim = std::make_unique<LogicSim>();
-    m_LogicSimThread = std::jthread([this]()
+    m_LogicSimThread = std::thread([this]()
     {
         while (this->running())
         {
@@ -45,6 +45,7 @@ App::App(std::string const& title, std::size_t width, std::size_t height)
 
 App::~App()
 {
+    m_LogicSimThread.join();
 }
 
 bool App::running() const

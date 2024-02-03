@@ -4,6 +4,8 @@ project(nandy2024)
 
 include(cmake/CPM.cmake)
 
+find_package(OpenGL REQUIRED)
+
 CPMAddPackage(
     NAME spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog
@@ -43,7 +45,7 @@ if(imgui_ADDED)
         ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer2.h
     )
     target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
-    target_link_libraries(imgui PUBLIC SDL2::SDL2-static opengl32)
+    target_link_libraries(imgui PUBLIC SDL2::SDL2-static OpenGL::GL)
 endif()
 
 CPMAddPackage(
@@ -75,8 +77,8 @@ set(SOURCES
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
-set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
-target_link_libraries(${PROJECT_NAME} spdlog SDL2::SDL2-static opengl32 imgui stb)
+
+target_link_libraries(${PROJECT_NAME} spdlog SDL2::SDL2-static imgui stb)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
@@ -84,3 +86,15 @@ target_include_directories(${PROJECT_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/logic
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
 )
+
+message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")
+message(STATUS "CMAKE_C_COMPILER: ${CMAKE_C_COMPILER}")
+message(STATUS "CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
+message(STATUS "CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "CMAKE_CXX_COMPILER_VERSION: ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "CMAKE_CXX_STANDARD: ${CMAKE_CXX_STANDARD}")
+message(STATUS "CMAKE_GENERATOR: ${CMAKE_GENERATOR}")
+message(STATUS "CMAKE_GENERATOR_PLATFORM: ${CMAKE_GENERATOR_PLATFORM}")
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")

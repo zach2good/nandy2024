@@ -18,7 +18,7 @@ public:
 protected:
     // TODO: LogicSim should be running on it's own thread so it can freely from the UI or the main application tick
     std::unique_ptr<LogicSim> m_LogicSim;
-    std::jthread              m_LogicSimThread;
+    std::thread               m_LogicSimThread;
 
     std::unique_ptr<Renderer> m_Renderer;
 
