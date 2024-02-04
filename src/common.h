@@ -16,6 +16,7 @@ typedef union SDL_Event SDL_Event;
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 #include <thread>
@@ -26,7 +27,6 @@ typedef union SDL_Event SDL_Event;
 #include "utils.h"
 
 // External includes
-// TODO: Set up spdlog to use async log sinks, and report back to the logging pane in the UI
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/fmt.h>
 

@@ -14,92 +14,130 @@
 #include <mutex>
 #include <shared_mutex>
 
-class IDrawable;
+class Component;
 class Node;
 class NandGate;
-typedef std::shared_ptr<Node>     NodePtr;
-typedef std::shared_ptr<NandGate> GatePtr;
 
-class IComponent
+typedef std::shared_ptr<Component> ComponentPtr;
+typedef std::shared_ptr<Node>      NodePtr;
+typedef std::shared_ptr<NandGate>  GatePtr;
+
+typedef std::vector<std::shared_ptr<Component>> ComponentPtrs;
+
+enum ComponentType
 {
-public:
-    float x, y, w, h;
+    NONE,
+    NODE,
+    NAND,
+    NOTE,
 };
 
-class IDraggable : public IComponent
+static std::string componentTypeToString(ComponentType type)
+{
+    switch (type)
+    {
+        case NONE: return "NONE";
+        case NODE: return "NODE";
+        case NAND: return "NAND";
+        case NOTE: return "NOTE";
+        default: return "UNKNOWN";
+    }
+}
+
+static float kNandGateSize   = 100.0f;
+static float kNodeSize       = 10.0f;
+static u64   nextComponentId = 1;
+
+class Component
 {
 public:
-    bool isHovered;
-    bool isDragging;
+    Component(ComponentType type)
+        : type(type)
+        , id(nextComponentId++)
+    {
+    }
+    virtual ~Component() = default;
+
+    virtual ComponentPtrs simulate() = 0;
+
+    ComponentType type  = NONE;
+    u64           id    = 0;
+    bool          dirty = true;
+
+    float x = 0.0f;
+    float y = 0.0f;
+    float w = 0.0f;
+    float h = 0.0f;
 };
 
 // TODO: These gate and circuit implementations were created by ChatGPT to get _something_ running underneath the UI.
 //       They are not intended to be a final solution. They are a starting point for a more robust & fast implementation.
 //       Presumably they don't handle cycles, and they don't handle multiple inputs/outputs.
 //       We also need an abstraction of a Bus with a specialisation for a single bit (Bus<1> == Wire).
-class Node : public IDraggable
+class Node : public Component
 {
-public:
+private:
     bool value;
-    bool stateChanged;
+
+public:
+    GatePtr       parent;
+    ComponentPtrs driving;
 
     Node(bool initialValue = false)
-        : value(initialValue), stateChanged(false)
+    : Component(NODE)
+    , value(initialValue)
     {
     }
 
-    inline virtual void setValue(bool val)
+    bool getValue() const
     {
-        if (value != val)
+        return value;
+    }
+
+    void setValue(bool newValue)
+    {
+        value = newValue;
+        dirty = true; // TODO: Compare this to the original value
+    }
+
+    inline ComponentPtrs simulate() override
+    {
+        dirty = false;
+        for (auto const& component : driving)
         {
-            value = val;
-            stateChanged = true;
+            if (component->type == NODE)
+            {
+                auto node = std::static_pointer_cast<Node>(component);
+                if (node->value != value)
+                {
+                    node->value = value;
+                    node->dirty = true;
+                }
+            }
+            else // TODO: Check NAND value?
+            {
+                component->dirty = true;
+            }
         }
-    }
-
-    inline virtual void simulate()
-    {
-        // Base class does nothing
-    }
-
-    inline bool getStateChanged() const
-    {
-        return stateChanged;
-    }
-
-    inline void resetStateChanged()
-    {
-        stateChanged = false;
-    }
-};
-
-class ConstantInputNode final : public Node
-{
-public:
-    ConstantInputNode(bool initialValue)
-        : Node(initialValue)
-    {
-    }
-
-    inline void setValue(bool val) override
-    {
-        // Do nothing to prevent value change
+        return driving;
     }
 };
 
 class OutputNode final : public Node
 {
+private:
     bool logOutput;
 
 public:
     OutputNode() : Node(), logOutput(true) {}
 
-    inline void simulate() override
+    inline ComponentPtrs simulate() override
     {
         if (logOutput)
         {
-            // spdlog::info(fmt::format("Output Value: {}", value).c_str());
+            spdlog::info(fmt::format("Output Value ({}): {}", id, getValue()).c_str());
         }
+        return Node::simulate();
     }
 
     inline void setLogOutput(bool shouldLog)
@@ -112,29 +150,41 @@ class ClockNode final : public Node
 {
 public:
     ClockNode()
-        : Node()
+    : Node()
     {
     }
 
-    inline void simulate() override
+    inline ComponentPtrs simulate() override
     {
-        setValue(!value);
+        setValue(!getValue());
+        return Node::simulate();
     }
 };
 
-class NandGate final : public IDraggable
+class NandGate final : public Component
 {
-    NodePtr input1, input2, output;
+private:
+    NodePtr input1;
+    NodePtr input2;
+    NodePtr output;
 
 public:
     NandGate(NodePtr in1, NodePtr in2, NodePtr out)
-        : input1(in1), input2(in2), output(out)
+    : Component(NAND)
+    , input1(in1)
+    , input2(in2)
+    , output(out)
     {
     }
 
-    inline void operate()
+    inline ComponentPtrs simulate() override
     {
-        output->setValue(!(input1->value && input2->value));
+        dirty = false;
+        input1->dirty = false;
+        input2->dirty = false;
+        output->setValue(!(input1->getValue() && input2->getValue()));
+        output->dirty = true;
+        return { output };
     }
 
     // Access methods
@@ -151,108 +201,103 @@ public:
 class LogicSim
 {
 public:
-    std::vector<NodePtr> nodes;
-    std::vector<GatePtr> gates;
-
-    std::vector<NodePtr> inputNodes;
-    std::vector<NodePtr> outputNodes;
-    std::vector<NodePtr> clockNodes;
-
-    std::queue<NodePtr> bfsQueue;
+    std::vector<NodePtr>     nodes;
+    std::vector<GatePtr>     gates;
+    std::queue<ComponentPtr> bfsQueue;
 
 public:
     LogicSim()
     {
         spdlog::info("LogicSim::LogicSim()");
-
-        // Test circuit
-        NodePtr input       = addConstantInputNode(true);
-        NodePtr clock       = addClockNode();
-        NodePtr finalOutput = addOutputNode();
-
-        float x = 100;
-        float y = 50;
-
-        // Create NAND gate
-        auto nandGate = addGate(x, y);
-        nandGate->connectInput1(input);
-        nandGate->connectInput2(clock);
-        x += 100.0f;
-
-        // Create a chain
-        for (int i = 0; i < std::pow(2, 8); ++i)
-        {
-            auto newGate = addGate(x, y);
-            newGate->connectInput1(nandGate->getOutputNode());
-            newGate->connectInput2(nandGate->getOutputNode());
-            x += 100.0f;
-
-            nandGate = newGate;
-        }
-
-        // Hook up final output
-        nandGate->connectOutput(finalOutput);
-
-        // Perform an initial simulation to make sure the initial state is correct
-        for (int i = 0; i < 4; ++i)
-        {
-            step(false);
-        }
     }
 
     ~LogicSim()
     {
     }
 
+    void reset()
+    {
+        std::lock_guard lock(mutex);
+
+        nodes.clear();
+        gates.clear();
+        while (!bfsQueue.empty())
+        {
+            bfsQueue.pop();
+        }
+    }
+
     NodePtr addNode(float x, float y)
     {
+        std::lock_guard lock(mutex);
+
         // std::lock_guard<std::shared_mutex> lock(readWriteMutex); // WRITE LOCK
         auto newNode = std::make_shared<Node>();
-        newNode->x = x - 5.0f; // TODO: Don't hardcode this to make the node centeres on the gate leg
-        newNode->y = y - 5.0f; // TODO: Don't hardcode this to make the node centeres on the gate leg
+        newNode->x = x - (kNodeSize / 2.0f); // TODO: Don't hardcode this to make the node centers on the gate leg
+        newNode->y = y - (kNodeSize / 2.0f); // TODO: Don't hardcode this to make the node centers on the gate leg
+        newNode->w = kNodeSize;
+        newNode->h = kNodeSize;
         nodes.push_back(newNode);
         return newNode;
     }
 
-    NodePtr addConstantInputNode(bool initialValue)
+    NodePtr addOutputNode(float x, float y)
     {
-        // std::lock_guard<std::shared_mutex> lock(readWriteMutex); // WRITE LOCK
-        auto newNode = std::make_shared<ConstantInputNode>(initialValue);
-        nodes.push_back(newNode);
-        inputNodes.push_back(newNode);
-        return newNode;
-    }
+        std::lock_guard lock(mutex);
 
-    NodePtr addOutputNode()
-    {
         // std::lock_guard<std::shared_mutex> lock(readWriteMutex); // WRITE LOCK
         auto newNode = std::make_shared<OutputNode>();
+        newNode->x = x - (kNodeSize / 2.0f); // TODO: Don't hardcode this to make the node centers on the gate leg
+        newNode->y = y - (kNodeSize / 2.0f); // TODO: Don't hardcode this to make the node centers on the gate leg
+        newNode->w = kNodeSize;
+        newNode->h = kNodeSize;
         nodes.push_back(newNode);
-        outputNodes.push_back(newNode);
         return newNode;
     }
 
-    NodePtr addClockNode()
+    NodePtr addClockNode(float x, float y)
     {
+        std::lock_guard lock(mutex);
+
         // std::lock_guard<std::shared_mutex> lock(readWriteMutex); // WRITE LOCK
         auto newNode = std::make_shared<ClockNode>();
+        newNode->x = x - (kNodeSize / 2.0f); // TODO: Don't hardcode this to make the node centers on the gate leg
+        newNode->y = y - (kNodeSize / 2.0f); // TODO: Don't hardcode this to make the node centers on the gate leg
+        newNode->w = kNodeSize;
+        newNode->h = kNodeSize;
         nodes.push_back(newNode);
-        clockNodes.push_back(newNode);
         return newNode;
     }
 
     GatePtr addGate(float x, float y)
     {
+        std::lock_guard lock(mutex);
         // std::lock_guard<std::shared_mutex> lock(readWriteMutex); // WRITE LOCK
 
         // Create a new gate using the ratios above
-        auto w = 100.0f;
-        auto h = 100.0f;
+        auto w = kNandGateSize;
+        auto h = kNandGateSize;
         auto newGate = std::make_shared<NandGate>(addNode(x + w * 0.0f, y + h * 0.3f), addNode(x + w * 0.0f, y + h * 0.7f), addNode(x + w * 1.0f, y + h * 0.5f));
         newGate->x = x;
         newGate->y = y;
+        newGate->w = w;
+        newGate->h = h;
+
+        newGate->getInputNode1()->parent = newGate;
+        newGate->getInputNode1()->driving.push_back(newGate);
+
+        newGate->getInputNode2()->parent = newGate;
+        newGate->getInputNode2()->driving.push_back(newGate); // TODO: Is this creating more work?
+
+        newGate->getOutputNode()->parent = newGate;
         gates.push_back(newGate);
         return newGate;
+    }
+
+    void connect(NodePtr in, NodePtr out)
+    {
+        std::lock_guard lock(mutex);
+        in->driving.push_back(out);
     }
 
     void step(bool logOutput = true)
@@ -266,20 +311,20 @@ public:
         // Set logging for OutputNodes
         for (auto& node : nodes)
         {
-            if (auto outputNode = std::dynamic_pointer_cast<OutputNode>(node))
+            if (auto outputNode = std::dynamic_pointer_cast<OutputNode>(node); outputNode != nullptr)
             {
                 outputNode->setLogOutput(logOutput);
             }
-        }
 
-        // Perform simulation with BFS
-        for (auto& node : nodes)
-        {
-            node->simulate(); // Ensure every node gets a chance to simulate
-            if (node->getStateChanged())
+            if (auto clockNode = std::dynamic_pointer_cast<ClockNode>(node); clockNode != nullptr)
+            {
+                // TODO: This is a hack to get the clock to work. It should be done differently.
+                clockNode->dirty = true;
+            }
+
+            if (node->dirty)
             {
                 bfsQueue.push(node);
-                node->resetStateChanged();
             }
         }
 
@@ -288,15 +333,15 @@ public:
             auto current = bfsQueue.front();
             bfsQueue.pop();
 
-            for (auto& gate : gates)
+            auto nexts = current->simulate();
+            for (auto const& next : nexts)
             {
-                gate->operate();
-                if (gate->getOutputNode()->getStateChanged())
+                if (next->dirty)
                 {
-                    bfsQueue.push(gate->getOutputNode());
-                    gate->getOutputNode()->resetStateChanged();
+                    bfsQueue.push(next);
                 }
             }
+
             ++m_OpsPerStep;
             ++m_OpsTotalCount;
         }
@@ -352,7 +397,7 @@ public:
 private:
     // TODO: With 1025 gates in a chain the simulation ran at 350Hz without this lock. Check to see if this slows it down substantially.
     // TODO: Need shared_recursive_mutex to allow for recursive locking
-    std::mutex mutex; // This is needed for Step() to be thread safe from the UI
+    std::recursive_mutex mutex; // This is needed for Step() to be thread safe from the UI
     // TODO: This locks up
 
     // TODO: These don't have to be atomic if we lock properly
