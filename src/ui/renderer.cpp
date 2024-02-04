@@ -9,6 +9,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include <nlohmann/json.hpp>
+
 #include "applog.h"
 #include "logic_sim.h"
 
@@ -306,6 +308,12 @@ void Renderer::draw(LogicSim& logicSim)
                 auto node = std::dynamic_pointer_cast<Node>(*m_ComponentUnderMouse);
                 node->setValue(!node->getValue());
             }
+            else if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsKeyDown(ImGuiKey_LeftShift) && m_IsCanvasHovered)
+            {
+                m_MouseDragStartX = m_CursorX;
+                m_MouseDragStartY = m_CursorY;
+                m_UIState = UIState::CanvasSelecting;
+            }
             else if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && m_IsCanvasHovered)
             {
                 m_UIState = UIState::CanvasPanning;
@@ -413,6 +421,79 @@ void Renderer::draw(LogicSim& logicSim)
             }
         }
         break;
+        case UIState::CanvasSelecting:
+        {
+            // Handle offset and zoom
+            float x = m_OffsetX + m_MouseDragStartX;
+            float y = m_OffsetY + m_MouseDragStartY;
+            float w = m_OffsetX + m_CursorX - m_MouseDragStartX;
+            float h = m_OffsetY + m_CursorY - m_MouseDragStartY;
+
+            if (w < 0)
+            {
+                x += w;
+                w = -w;
+            }
+
+            if (h < 0)
+            {
+                y += h;
+                h = -h;
+            }
+
+            // NOTE: This routine doesn't work right
+            std::vector<ComponentPtr> selectedComponents;
+            for (auto& node : logicSim.nodes)
+            {
+                if ((node->x + m_OffsetX) > x && (node->x + m_OffsetX) < x + w && (node->y + m_OffsetY) > y && (node->y + m_OffsetY) < y + h)
+                {
+                    selectedComponents.push_back(node);
+                }
+            }
+            for (auto& gate : logicSim.gates)
+            {
+                if ((gate->x + m_OffsetX) > x && (gate->x + m_OffsetX) < x + w && (gate->y + m_OffsetY) > y && (gate->y + m_OffsetY) < y + h)
+                {
+                    selectedComponents.push_back(gate);
+                }
+            }
+
+            // NOTE: This routine is correct
+            // Find the minimum x,y and maximum x,y across all selected components
+            float minX = std::numeric_limits<float>::max();
+            float minY = std::numeric_limits<float>::max();
+            float maxX = std::numeric_limits<float>::min();
+            float maxY = std::numeric_limits<float>::min();
+            for (auto& component : selectedComponents)
+            {
+                minX = std::min(minX, (component->x + m_OffsetX));
+                minY = std::min(minY, (component->y + m_OffsetY));
+                maxX = std::max(maxX, (component->x + component->w + m_OffsetX));
+                maxY = std::max(maxY, (component->y + component->h + m_OffsetY));
+            }
+
+            // Draw a rectangle around the selected components
+            SDL_SetRenderDrawColor(m_Renderer, 64, 64, 64, 255);
+            drawPrimitiveRectangle(minX * m_Zoom, minY * m_Zoom, (maxX - minX) * m_Zoom, (maxY - minY) * m_Zoom);
+
+            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            {
+                // Draw a rectangle from the start of the drag to the current mouse position
+                SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, 255);
+                drawPrimitiveRectangle(m_MouseDragStartX, m_MouseDragStartY, m_CursorX - m_MouseDragStartX, m_CursorY - m_MouseDragStartY);
+            }
+            else
+            {
+                // TODO: Output selected components to the console as JSON
+                spdlog::info("Selected {} components", selectedComponents.size());
+                for (auto& component : selectedComponents)
+                {
+                    spdlog::info("{}: {}", component->id, component->type);
+                }
+
+                m_UIState = UIState::None;
+            }
+        }
     }
 
     // Render to the screen
@@ -523,6 +604,9 @@ void Renderer::drawUI(LogicSim& logicSim)
             }
 
             // Break
+            ImGui::Separator();
+
+            ImGui::Text("User Components");
 
             ImGui::EndChild();
         }

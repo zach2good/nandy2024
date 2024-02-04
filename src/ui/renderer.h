@@ -51,6 +51,7 @@ private:
         CanvasPanning,
         CanvasMovingComponent,
         CanvasConnectingComponents,
+        CanvasSelecting,
     } m_UIState = UIState::None;
 
     std::string UIStateToString(UIState state)
@@ -62,6 +63,7 @@ private:
             case UIState::CanvasPanning: return "CanvasPanning";
             case UIState::CanvasMovingComponent: return "CanvasMovingComponent";
             case UIState::CanvasConnectingComponents: return "CanvasConnectingComponents";
+            case UIState::CanvasSelecting: return "CanvasSelecting";
         }
         return "Unknown";
     }

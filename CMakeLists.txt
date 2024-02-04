@@ -58,6 +58,12 @@ if(stb_ADDED)
     target_include_directories(stb INTERFACE ${stb_SOURCE_DIR})
 endif()
 
+CPMAddPackage(
+    NAME json
+    GIT_REPOSITORY https://github.com/nlohmann/json
+    GIT_TAG develop
+)
+
 set(SOURCES
     src/app.cpp
     src/app.h
@@ -76,13 +82,13 @@ set(SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME} spdlog SDL2::SDL2-static imgui stb)
+target_link_libraries(${PROJECT_NAME} spdlog SDL2::SDL2-static imgui stb nlohmann_json)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/logic
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/logic
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
 )
 
 message(STATUS "CMAKE_VERSION: ${CMAKE_VERSION}")

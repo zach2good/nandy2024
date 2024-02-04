@@ -333,8 +333,7 @@ public:
             auto current = bfsQueue.front();
             bfsQueue.pop();
 
-            auto nexts = current->simulate();
-            for (auto const& next : nexts)
+            for (auto const& next : current->simulate())
             {
                 if (next->dirty)
                 {
