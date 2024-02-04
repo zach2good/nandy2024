@@ -68,8 +68,6 @@ set(SOURCES
 
     src/ui/renderer.cpp
     src/ui/renderer.h
-    src/ui/ui.cpp
-    src/ui/ui.h
 
     src/logic/gates.h
     src/logic/logic_sim.cpp

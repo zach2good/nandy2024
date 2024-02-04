@@ -20,18 +20,24 @@ class NandGate;
 typedef std::shared_ptr<Node>     NodePtr;
 typedef std::shared_ptr<NandGate> GatePtr;
 
-class IDrawable
+class IComponent
 {
 public:
-    float x;
-    float y;
+    float x, y, w, h;
+};
+
+class IDraggable : public IComponent
+{
+public:
+    bool isHovered;
+    bool isDragging;
 };
 
 // TODO: These gate and circuit implementations were created by ChatGPT to get _something_ running underneath the UI.
 //       They are not intended to be a final solution. They are a starting point for a more robust & fast implementation.
 //       Presumably they don't handle cycles, and they don't handle multiple inputs/outputs.
 //       We also need an abstraction of a Bus with a specialisation for a single bit (Bus<1> == Wire).
-class Node : public IDrawable
+class Node : public IDraggable
 {
 public:
     bool value;
@@ -116,7 +122,7 @@ public:
     }
 };
 
-class NandGate : public IDrawable
+class NandGate final : public IDraggable
 {
     NodePtr input1, input2, output;
 
@@ -198,10 +204,12 @@ public:
     {
     }
 
-    NodePtr addNode()
+    NodePtr addNode(float x, float y)
     {
         // std::lock_guard<std::shared_mutex> lock(readWriteMutex); // WRITE LOCK
         auto newNode = std::make_shared<Node>();
+        newNode->x = x - 5.0f; // TODO: Don't hardcode this to make the node centeres on the gate leg
+        newNode->y = y - 5.0f; // TODO: Don't hardcode this to make the node centeres on the gate leg
         nodes.push_back(newNode);
         return newNode;
     }
@@ -236,7 +244,11 @@ public:
     GatePtr addGate(float x, float y)
     {
         // std::lock_guard<std::shared_mutex> lock(readWriteMutex); // WRITE LOCK
-        auto newGate = std::make_shared<NandGate>(addNode(), addNode(), addNode());
+
+        // Create a new gate using the ratios above
+        auto w = 100.0f;
+        auto h = 100.0f;
+        auto newGate = std::make_shared<NandGate>(addNode(x + w * 0.0f, y + h * 0.3f), addNode(x + w * 0.0f, y + h * 0.7f), addNode(x + w * 1.0f, y + h * 0.5f));
         newGate->x = x;
         newGate->y = y;
         gates.push_back(newGate);

@@ -2,7 +2,6 @@
 
 #include "logic/logic_sim.h"
 #include "ui/renderer.h"
-#include "ui/ui.h"
 #include "applog_sink.h"
 
 #include <SDL.h>
