@@ -5,8 +5,9 @@
 
 #include "logic/logic_sim.h"
 #include "ui/applog.h"
+#include "ui/renderer.h"
 
-void UI::draw(LogicSim& logicSim, SDL_Texture* texture)
+void UI::draw(Renderer& renderer, LogicSim& logicSim, SDL_Texture* texture)
 {
     // TODO: Instead of getting fresh information from logicSim every time there is a UI update, we should only do it 2-4 times per second.
     //       This includes generating the texture, and getting the stats.
@@ -87,13 +88,17 @@ void UI::draw(LogicSim& logicSim, SDL_Texture* texture)
 
                     if (ImGui::Button("Zoom +"))
                     {
-                        spdlog::info("Zoom + button pressed");
+                        spdlog::info("Zoom + button pressed: {}", renderer.m_Zoom);
+                        renderer.m_Zoom += 0.1f;
+                        renderer.m_Zoom = std::clamp(renderer.m_Zoom, 0.025f, 3.0f);
                     }
                     ImGui::SameLine();
 
                     if (ImGui::Button("Zoom -"))
                     {
-                        spdlog::info("Zoom - button pressed");
+                        spdlog::info("Zoom - button pressed: {}", renderer.m_Zoom);
+                        renderer.m_Zoom -= 0.1f;
+                        renderer.m_Zoom = std::clamp(renderer.m_Zoom, 0.025f, 3.0f);
                     }
                     ImGui::SameLine();
 
@@ -139,12 +144,18 @@ void UI::draw(LogicSim& logicSim, SDL_Texture* texture)
                         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DND_DEMO"))
                         {
                             spdlog::info("ImGui drag and drop accepted! Cursor: {}, {}", canvasX, canvasY);
+                            auto gate = std::make_shared<NandGate>(logicSim.addNode(), logicSim.addNode(), logicSim.addNode());
+                            gate->x = (canvasX - renderer.m_OffsetX) / renderer.m_Zoom;
+                            gate->y = (canvasY - renderer.m_OffsetY) / renderer.m_Zoom;
+                            logicSim.gates.push_back(gate);
                         }
                         ImGui::EndDragDropTarget();
                     }
                     if (ImGui::IsItemHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
                     {
-                        spdlog::info("x: {}, y: {}, delta: {}, {}", canvasX, canvasY, ImGui::GetMouseDragDelta().x, ImGui::GetMouseDragDelta().y);
+                        renderer.m_OffsetX += mouseDelta.x;
+                        renderer.m_OffsetY += mouseDelta.y;
+                        spdlog::info("x: {}, y: {}, delta: {}, {}", canvasX, canvasY, mouseDelta.x, mouseDelta.y);
                     }
                 }
                 ImGui::EndChild(); // "CanvasPane"

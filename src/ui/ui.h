@@ -5,5 +5,5 @@
 class UI
 {
 public:
-    static void draw(LogicSim& logicSim, SDL_Texture* texture);
+    static void draw(Renderer& renderer, LogicSim& logicSim, SDL_Texture* texture);
 };

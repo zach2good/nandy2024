@@ -9,6 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+#include "logic_sim.h"
 #include "ui.h"
 
 Renderer::Renderer(std::string const& title, std::size_t width, std::size_t height)
@@ -180,6 +181,7 @@ void Renderer::draw(LogicSim& logicSim)
 {
     // Render to a texture
     SDL_SetRenderTarget(m_Renderer, m_CanvasTexture);
+    SDL_RenderClear(m_Renderer); // Clear the texture
 
     // White
     SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, 255);
@@ -188,14 +190,15 @@ void Renderer::draw(LogicSim& logicSim)
     // TODO: The UI should own the renderer and the logic sim
     // Draw_Primitive_NAND(canvas_x, canvas_y, sz * zoom, sz * zoom, a, b, o);
 
-    drawPrimitiveNAND(250, 150, 100, 100, false, false, false);
-    drawPrimitiveNAND(250, 250, 100, 100, false, false, false);
-    drawPrimitiveNAND(250, 350, 100, 100, false, false, false);
+    for (auto& gate : logicSim.gates)
+    {
+        drawPrimitiveNAND(m_OffsetX + gate->x * m_Zoom, m_OffsetY + gate->y * m_Zoom, 100 * m_Zoom, 100 * m_Zoom, false, false, false);
+    }
 
     // Render to the screen
     SDL_SetRenderTarget(m_Renderer, nullptr);
 
-    UI::draw(logicSim, m_CanvasTexture);
+    UI::draw(*this, logicSim, m_CanvasTexture);
 }
 
 void Renderer::present()

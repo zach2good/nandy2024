@@ -14,17 +14,24 @@
 #include <mutex>
 #include <shared_mutex>
 
-
+class IDrawable;
 class Node;
 class NandGate;
 typedef std::shared_ptr<Node>     NodePtr;
 typedef std::shared_ptr<NandGate> GatePtr;
 
+class IDrawable
+{
+public:
+    float x;
+    float y;
+};
+
 // TODO: These gate and circuit implementations were created by ChatGPT to get _something_ running underneath the UI.
 //       They are not intended to be a final solution. They are a starting point for a more robust & fast implementation.
 //       Presumably they don't handle cycles, and they don't handle multiple inputs/outputs.
 //       We also need an abstraction of a Bus with a specialisation for a single bit (Bus<1> == Wire).
-class Node
+class Node : public IDrawable
 {
 public:
     bool value;
@@ -60,7 +67,7 @@ public:
     }
 };
 
-class ConstantInputNode : public Node
+class ConstantInputNode final : public Node
 {
 public:
     ConstantInputNode(bool initialValue)
@@ -74,7 +81,7 @@ public:
     }
 };
 
-class OutputNode : public Node
+class OutputNode final : public Node
 {
     bool logOutput;
 
@@ -95,7 +102,7 @@ public:
     }
 };
 
-class ClockNode : public Node
+class ClockNode final : public Node
 {
 public:
     ClockNode()
@@ -109,7 +116,7 @@ public:
     }
 };
 
-class NandGate
+class NandGate : public IDrawable
 {
     NodePtr input1, input2, output;
 
@@ -157,17 +164,23 @@ public:
         NodePtr clock       = addClockNode();
         NodePtr finalOutput = addOutputNode();
 
+        float x = 100;
+        float y = 50;
+
         // Create NAND gate
-        auto nandGate = addGate();
+        auto nandGate = addGate(x, y);
         nandGate->connectInput1(input);
         nandGate->connectInput2(clock);
+        x += 100.0f;
 
         // Create a chain
         for (int i = 0; i < std::pow(2, 8); ++i)
         {
-            auto newGate = addGate();
+            auto newGate = addGate(x, y);
             newGate->connectInput1(nandGate->getOutputNode());
             newGate->connectInput2(nandGate->getOutputNode());
+            x += 100.0f;
+
             nandGate = newGate;
         }
 
@@ -220,10 +233,12 @@ public:
         return newNode;
     }
 
-    GatePtr addGate()
+    GatePtr addGate(float x, float y)
     {
         // std::lock_guard<std::shared_mutex> lock(readWriteMutex); // WRITE LOCK
         auto newGate = std::make_shared<NandGate>(addNode(), addNode(), addNode());
+        newGate->x = x;
+        newGate->y = y;
         gates.push_back(newGate);
         return newGate;
     }
