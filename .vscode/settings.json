@@ -85,6 +85,10 @@
         "xutility": "cpp",
         "queue": "cpp",
         "sdl_internal.h": "c",
-        "shared_mutex": "cpp"
+        "shared_mutex": "cpp",
+        "codecvt": "cpp",
+        "csignal": "cpp",
+        "numeric": "cpp",
+        "valarray": "cpp"
     }
 }

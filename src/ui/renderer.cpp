@@ -208,7 +208,8 @@ void Renderer::draw(LogicSim& logicSim)
     m_ComponentUnderMouse = std::nullopt;
     for (auto& node : logicSim.nodes)
     {
-        if (node->getValue())
+        auto& component = logicSim.components[node.componentId.value];
+        if (node.value)
         {
             // Yellow
             SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
@@ -218,24 +219,21 @@ void Renderer::draw(LogicSim& logicSim)
             // Grey
             SDL_SetRenderDrawColor(m_Renderer, 128, 128, 128, 255);
         }
-        drawPrimitiveRectangle(m_OffsetX + node->x * m_Zoom, m_OffsetY + node->y * m_Zoom, node->w * m_Zoom, node->h * m_Zoom);
+        drawPrimitiveRectangle(m_OffsetX + component.x * m_Zoom, m_OffsetY + component.y * m_Zoom, component.w * m_Zoom, component.h * m_Zoom);
 
         // TODO: This is kind of nasty, do I want an abstraction for "wire"?
-        for (auto& other : node->driving)
+        for (auto& otherNodeId : logicSim.drivingNodes[node.id.value])
         {
-            if (other->type != NODE)
-            {
-                continue;
-            }
+            auto& otherNode = logicSim.nodes[otherNodeId.value];
 
-            auto a  = node;
-            auto b  = other;
-            auto aX = m_OffsetX + (a->x + 5.0f) * m_Zoom;
-            auto aY = m_OffsetY + (a->y + 5.0f) * m_Zoom;
-            auto bX = m_OffsetX + (b->x + 5.0f) * m_Zoom;
-            auto bY = m_OffsetY + (b->y + 5.0f) * m_Zoom;
+            auto  a  = logicSim.components[node.componentId.value];
+            auto  b  = logicSim.components[otherNode.componentId.value];
+            auto  aX = m_OffsetX + (a.x + 5.0f) * m_Zoom;
+            auto  aY = m_OffsetY + (a.y + 5.0f) * m_Zoom;
+            auto  bX = m_OffsetX + (b.x + 5.0f) * m_Zoom;
+            auto  bY = m_OffsetY + (b.y + 5.0f) * m_Zoom;
 
-            if (a->getValue())
+            if (node.value)
             {
                 // Yellow
                 SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
@@ -249,22 +247,34 @@ void Renderer::draw(LogicSim& logicSim)
             drawPrimitiveLine(aX, aY, bX, bY);
         }
 
-        if (!m_ComponentUnderMouse && m_CursorX > m_OffsetX + node->x * m_Zoom && m_CursorX < m_OffsetX + node->x * m_Zoom + node->w * m_Zoom &&
-            m_CursorY > m_OffsetY + node->y * m_Zoom && m_CursorY < m_OffsetY + node->y * m_Zoom + node->h * m_Zoom)
+        if (!m_ComponentUnderMouse &&
+            m_CursorX > m_OffsetX + component.x * m_Zoom &&
+            m_CursorX < m_OffsetX + component.x * m_Zoom + component.w * m_Zoom &&
+            m_CursorY > m_OffsetY + component.y * m_Zoom &&
+            m_CursorY < m_OffsetY + component.y * m_Zoom + component.h * m_Zoom)
         {
-            m_ComponentUnderMouse = node;
+            m_ComponentUnderMouse = component;
         }
     }
     for (auto& gate : logicSim.gates)
     {
+        auto& component = logicSim.components[gate.componentId.value];
+
         // White
         SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, 255);
-        drawPrimitiveNAND(m_OffsetX + gate->x * m_Zoom, m_OffsetY + gate->y * m_Zoom, gate->w * m_Zoom, gate->h * m_Zoom, false, false, false);
+        drawPrimitiveNAND(
+            m_OffsetX + component.x * m_Zoom,
+            m_OffsetY + component.y * m_Zoom,
+            component.w * m_Zoom,
+            component.h * m_Zoom, false, false, false);
 
-        if (!m_ComponentUnderMouse && m_CursorX > m_OffsetX + gate->x * m_Zoom && m_CursorX < m_OffsetX + gate->x * m_Zoom + gate->w * m_Zoom &&
-            m_CursorY > m_OffsetY + gate->y * m_Zoom && m_CursorY < m_OffsetY + gate->y * m_Zoom + gate->h * m_Zoom)
+        if (!m_ComponentUnderMouse &&
+            m_CursorX > m_OffsetX + component.x * m_Zoom &&
+            m_CursorX < m_OffsetX + component.x * m_Zoom + component.w * m_Zoom &&
+            m_CursorY > m_OffsetY + component.y * m_Zoom &&
+            m_CursorY < m_OffsetY + component.y * m_Zoom + component.h * m_Zoom)
         {
-            m_ComponentUnderMouse = gate;
+            m_ComponentUnderMouse = component;
         }
     }
 
@@ -275,38 +285,41 @@ void Renderer::draw(LogicSim& logicSim)
             // Highlight components under the mouse by redrawing them
             if (m_ComponentUnderMouse)
             {
-                if (auto gate = std::dynamic_pointer_cast<NandGate>(*m_ComponentUnderMouse); gate != nullptr)
+                auto component = (*m_ComponentUnderMouse).get();
+                if (component.type == NAND) // TODO: Get rid of .type and use std::optional or something with .getGate(component)
                 {
                     // Yellow
                     SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
-                    drawPrimitiveRectangle(m_OffsetX + gate->x * m_Zoom, m_OffsetY + gate->y * m_Zoom, gate->w * m_Zoom, gate->h * m_Zoom);
+                    drawPrimitiveNAND(m_OffsetX + component.x * m_Zoom, m_OffsetY + component.y * m_Zoom, component.w * m_Zoom, component.h * m_Zoom, false, false, false);
                 }
-                else if (auto node = std::dynamic_pointer_cast<Node>(*m_ComponentUnderMouse); node != nullptr)
+                else if (component.type == NODE)
                 {
                     // Yellow
                     SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
-                    drawPrimitiveRectangle(m_OffsetX + node->x * m_Zoom, m_OffsetY + node->y * m_Zoom, node->w * m_Zoom, node->h * m_Zoom);
+                    drawPrimitiveRectangle(m_OffsetX + component.x * m_Zoom, m_OffsetY + component.y * m_Zoom, component.w * m_Zoom, component.h * m_Zoom);
                 }
             }
 
-            if (m_ComponentUnderMouse && (*m_ComponentUnderMouse)->type == NAND && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            if (m_ComponentUnderMouse && (*m_ComponentUnderMouse).get().type == NAND && ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 m_UIState = UIState::CanvasMovingComponent;
                 m_MouseDragStartX = m_CursorX;
                 m_MouseDragStartY = m_CursorY;
                 m_ComponentBeingMoved = m_ComponentUnderMouse;
             }
-            else if (m_ComponentUnderMouse && (*m_ComponentUnderMouse)->type == NODE && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            else if (m_ComponentUnderMouse && (*m_ComponentUnderMouse).get().type == NODE && ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 m_UIState = UIState::CanvasConnectingComponents;
                 m_MouseDragStartX = m_CursorX;
                 m_MouseDragStartY = m_CursorY;
                 m_ComponentConnectionSource = m_ComponentUnderMouse;
             }
-            else if (m_ComponentUnderMouse && (*m_ComponentUnderMouse)->type == NODE && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            else if (m_ComponentUnderMouse && (*m_ComponentUnderMouse).get().type == NODE && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
             {
-                auto node = std::dynamic_pointer_cast<Node>(*m_ComponentUnderMouse);
-                node->setValue(!node->getValue());
+                auto& component = (*m_ComponentUnderMouse).get();
+                component.dirty = true;
+                Node& node      = logicSim.getNode(component);
+                node.value      = !node.value;
             }
             else if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && ImGui::IsKeyDown(ImGuiKey_LeftShift) && m_IsCanvasHovered)
             {
@@ -338,23 +351,33 @@ void Renderer::draw(LogicSim& logicSim)
             if (m_ComponentBeingMoved && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
             {
                 // We know the component is a NAND if we're here
-                auto gate = std::dynamic_pointer_cast<NandGate>(*m_ComponentBeingMoved);
+                auto& component = (*m_ComponentBeingMoved).get();
+                auto& gate      = logicSim.getGate(component);
 
                 // Redraw the component in yellow before we apply any transformations, otherwise there will be ghosting
                 SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
-                drawPrimitiveNAND(m_OffsetX + gate->x * m_Zoom, m_OffsetY + gate->y * m_Zoom, gate->w * m_Zoom, gate->h * m_Zoom, false, false, false);
+                drawPrimitiveNAND(
+                    m_OffsetX + component.x * m_Zoom,
+                    m_OffsetY + component.y * m_Zoom,
+                    component.w * m_Zoom,
+                    component.h * m_Zoom, false, false, false);
 
                 // TODO: Gross, make this a method?
-                gate->x += ImGui::GetIO().MouseDelta.x / m_Zoom;
-                gate->y += ImGui::GetIO().MouseDelta.y / m_Zoom;
+                component.x += ImGui::GetIO().MouseDelta.x / m_Zoom;
+                component.y += ImGui::GetIO().MouseDelta.y / m_Zoom;
+
+                // TODO: This is gross, make helpers
+                auto& i0c = logicSim.components[logicSim.getNode(gate.input0Id).componentId.value];
+                auto& i1c = logicSim.components[logicSim.getNode(gate.input1Id).componentId.value];
+                auto& o0c = logicSim.components[logicSim.getNode(gate.outputId).componentId.value];
 
                 // TODO: Don't hardcode sizes here?
-                gate->getInputNode1()->x = (gate->x + gate->w * 0.0f) - 5.0f;
-                gate->getInputNode1()->y = (gate->y + gate->h * 0.3f) - 5.0f;
-                gate->getInputNode2()->x = (gate->x + gate->w * 0.0f) - 5.0f;
-                gate->getInputNode2()->y = (gate->y + gate->h * 0.7f) - 5.0f;
-                gate->getOutputNode()->x = (gate->x + gate->w * 1.0f) - 5.0f;
-                gate->getOutputNode()->y = (gate->y + gate->h * 0.5f) - 5.0f;
+                i0c.x = (component.x + component.w * 0.0f) - 5.0f;
+                i0c.y = (component.y + component.h * 0.3f) - 5.0f;
+                i1c.x = (component.x + component.w * 0.0f) - 5.0f;
+                i1c.y = (component.y + component.h * 0.7f) - 5.0f;
+                o0c.x = (component.x + component.w * 1.0f) - 5.0f;
+                o0c.y = (component.y + component.h * 0.5f) - 5.0f;
             }
             else
             {
@@ -371,37 +394,39 @@ void Renderer::draw(LogicSim& logicSim)
                 SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
                 drawPrimitiveLine(m_MouseDragStartX, m_MouseDragStartY, m_CursorX, m_CursorY);
 
-                auto source = std::dynamic_pointer_cast<Node>(*m_ComponentConnectionSource);
+                auto& source = (*m_ComponentConnectionSource).get();
 
                 // Keep source highlighted in yellow
                 SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
-                drawPrimitiveRectangle(m_OffsetX + source->x * m_Zoom, m_OffsetY + source->y * m_Zoom, source->w * m_Zoom, source->h * m_Zoom);
+                drawPrimitiveRectangle(m_OffsetX + source.x * m_Zoom, m_OffsetY + source.y * m_Zoom, source.w * m_Zoom, source.h * m_Zoom);
 
                 m_ComponentConnectionTarget = std::nullopt;
                 if (m_ComponentUnderMouse)
                 {
-                    if (auto target = std::dynamic_pointer_cast<Node>(*m_ComponentUnderMouse); target != nullptr)
+                    if (m_ComponentUnderMouse)
                     {
-                        // Check is valid
-                        bool isSameNode    = source->id == target->id;
-                        bool isSiblingNode = source->parent && source->parent == target->parent;
+                        auto& target = (*m_ComponentUnderMouse).get();
 
-                        if (!isSameNode && !isSiblingNode)
+                        // Check is valid
+                        bool isSameNode = source.id.value == target.id.value;
+                        // bool isSiblingNode = source->parent && source->parent == target->parent; // TODO: Reinstate me
+
+                        if (!isSameNode) // && !isSiblingNode)
                         {
                             // Highlight potential target in yellow
                             SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
-                            drawPrimitiveRectangle(m_OffsetX + target->x * m_Zoom, m_OffsetY + target->y * m_Zoom, target->w * m_Zoom, target->h * m_Zoom);
+                            drawPrimitiveRectangle(m_OffsetX + target.x * m_Zoom, m_OffsetY + target.y * m_Zoom, target.w * m_Zoom, target.h * m_Zoom);
 
                             m_ComponentConnectionTarget = m_ComponentUnderMouse;
                         }
-                        else if (isSiblingNode)
-                        {
-                            // Draw everything in red to indicate invalid connection
-                            SDL_SetRenderDrawColor(m_Renderer, 255, 0, 0, 255);
-                            drawPrimitiveRectangle(m_OffsetX + source->x * m_Zoom, m_OffsetY + source->y * m_Zoom, source->w * m_Zoom, source->h * m_Zoom);
-                            drawPrimitiveRectangle(m_OffsetX + target->x * m_Zoom, m_OffsetY + target->y * m_Zoom, target->w * m_Zoom, target->h * m_Zoom);
-                            drawPrimitiveLine(m_MouseDragStartX, m_MouseDragStartY, m_CursorX, m_CursorY);
-                        }
+                        // else if (isSiblingNode)
+                        // {
+                        //     // Draw everything in red to indicate invalid connection
+                        //     SDL_SetRenderDrawColor(m_Renderer, 255, 0, 0, 255);
+                        //     drawPrimitiveRectangle(m_OffsetX + source->x * m_Zoom, m_OffsetY + source->y * m_Zoom, source->w * m_Zoom, source->h * m_Zoom);
+                        //     drawPrimitiveRectangle(m_OffsetX + target->x * m_Zoom, m_OffsetY + target->y * m_Zoom, target->w * m_Zoom, target->h * m_Zoom);
+                        //     drawPrimitiveLine(m_MouseDragStartX, m_MouseDragStartY, m_CursorX, m_CursorY);
+                        // }
                     }
                 }
             }
@@ -409,9 +434,14 @@ void Renderer::draw(LogicSim& logicSim)
             {
                 if (m_ComponentConnectionSource && m_ComponentConnectionTarget)
                 {
-                    auto source = std::dynamic_pointer_cast<Node>(*m_ComponentConnectionSource);
-                    auto target = std::dynamic_pointer_cast<Node>(*m_ComponentConnectionTarget);
-                    logicSim.connect(source, target);
+                    auto& source = (*m_ComponentConnectionSource).get();
+                    auto& target = (*m_ComponentConnectionTarget).get();
+                    if (source.type == NODE && target.type == NODE)
+                    {
+                        auto& sourceNode = logicSim.getNode(source);
+                        auto& targetNode = logicSim.getNode(target);
+                        logicSim.connect(sourceNode.id, targetNode.id);
+                    }
                 }
 
                 // Clear the state
@@ -441,6 +471,7 @@ void Renderer::draw(LogicSim& logicSim)
                 h = -h;
             }
 
+            /*
             // NOTE: This routine doesn't work right
             std::vector<ComponentPtr> selectedComponents;
             for (auto& node : logicSim.nodes)
@@ -457,7 +488,6 @@ void Renderer::draw(LogicSim& logicSim)
                     selectedComponents.push_back(gate);
                 }
             }
-
             // NOTE: This routine is correct
             // Find the minimum x,y and maximum x,y across all selected components
             float minX = std::numeric_limits<float>::max();
@@ -475,6 +505,7 @@ void Renderer::draw(LogicSim& logicSim)
             // Draw a rectangle around the selected components
             SDL_SetRenderDrawColor(m_Renderer, 64, 64, 64, 255);
             drawPrimitiveRectangle(minX * m_Zoom, minY * m_Zoom, (maxX - minX) * m_Zoom, (maxY - minY) * m_Zoom);
+            */
 
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
             {
@@ -484,13 +515,14 @@ void Renderer::draw(LogicSim& logicSim)
             }
             else
             {
+                /*
                 // TODO: Output selected components to the console as JSON
                 spdlog::info("Selected {} components", selectedComponents.size());
                 for (auto& component : selectedComponents)
                 {
                     spdlog::info("{}: {}", component->id, component->type);
                 }
-
+                */
                 m_UIState = UIState::None;
             }
         }
@@ -629,17 +661,21 @@ void Renderer::drawUI(LogicSim& logicSim)
                     }
                     ImGui::SameLine();
 
-                    if (ImGui::Button("Run"))
+                    if (!logicSim.running())
                     {
-                        spdlog::info("Run button pressed");
-                        logicSim.run();
+                        if (ImGui::Button("Run"))
+                        {
+                            spdlog::info("Run button pressed");
+                            logicSim.run();
+                        }
                     }
-                    ImGui::SameLine();
-
-                    if (ImGui::Button("Stop"))
+                    else
                     {
-                        spdlog::info("Stop button pressed");
-                        logicSim.stop();
+                        if (ImGui::Button("Stop"))
+                        {
+                            spdlog::info("Stop button pressed");
+                            logicSim.stop();
+                        }
                     }
                     ImGui::SameLine();
 
@@ -695,6 +731,22 @@ void Renderer::drawUI(LogicSim& logicSim)
                         m_Zoom    = 1.0f;
                         logicSim.reset();
                     }
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Print Json"))
+                    {
+                        spdlog::info("Print Json button pressed");
+                        spdlog::info(logicSim.toJson());
+                    }
+
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Save & Rebuild from Json"))
+                    {
+                        spdlog::info("Rebuild from Json button pressed");
+                        logicSim.saveToFile("circuit.json");
+                        logicSim.loadFromFile("circuit.json");
+                    }
 
                     ImGui::EndChild(); // "ButtonsPane"
                 }
@@ -734,16 +786,22 @@ void Renderer::drawUI(LogicSim& logicSim)
                             logicSim.addClockNode(x + 50.0f, y + 50.0f); // TODO
                             m_UIState = UIState::None;
                         }
+                        /*
                         else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("OUTPUT"))
                         {
                             logicSim.addOutputNode(x + 50.0f, y + 50.0f); // TODO
                             m_UIState = UIState::None;
                         }
+                        */
 
                         ImGui::EndDragDropTarget();
                     }
                 }
                 ImGui::EndChild(); // "CanvasPane"
+            }
+            if (m_UIState == UIState::UIDragging)
+            {
+                m_UIState = UIState::None;
             }
 
             // Logging/stats
@@ -759,11 +817,39 @@ void Renderer::drawUI(LogicSim& logicSim)
         ImGui::SameLine();
         ImGui::BeginChild("Right", ImVec2(0, 0), ImGuiChildFlags_Border);
         {
+            ImGui::Text(fmt::format("Components count: {}", logicSim.components.size()).c_str());
             ImGui::Text(fmt::format("Gates count: {}", logicSim.gates.size()).c_str());
             ImGui::Text(fmt::format("Nodes count: {}", logicSim.nodes.size()).c_str());
             ImGui::Text(fmt::format("Step count: {}", logicSim.stepCount()).c_str());
-            ImGui::Text(fmt::format("Step time: {:L}us", logicSim.stepTime()).c_str());
-            ImGui::Text(fmt::format("Hz: {}", 1000000.0f / logicSim.stepTime()).c_str());
+
+            auto ns = logicSim.stepTime();
+            if (ns > 1000000)
+            {
+                ImGui::Text(fmt::format("Step time: {:.2f}ms", ns / 1000000.0f).c_str());
+            }
+            else if (ns > 1000)
+            {
+                ImGui::Text(fmt::format("Step time: {:.2f}us", ns / 1000.0f).c_str());
+            }
+            else
+            {
+                ImGui::Text(fmt::format("Step time: {:.2f}ns", ns).c_str());
+            }
+
+            auto Hz = 1000000000.0f / logicSim.stepTime(); // From nano to Hz
+            if (Hz > 1000000.0f)
+            {
+                ImGui::Text(fmt::format("Hz: {:.2f}MHz", Hz / 1000000.0f).c_str());
+            }
+            else if (Hz > 1000.0f)
+            {
+                ImGui::Text(fmt::format("Hz: {:.2f}kHz", Hz / 1000.0f).c_str());
+            }
+            else
+            {
+                ImGui::Text(fmt::format("Hz: {:.2f}Hz", Hz).c_str());
+            }
+
             ImGui::Text(fmt::format("Ops total: {}", logicSim.opsTotalCount()).c_str());
             ImGui::Text(fmt::format("Ops per step: {}", logicSim.opsPerStep()).c_str());
 
@@ -786,28 +872,28 @@ void Renderer::drawUI(LogicSim& logicSim)
 
             ImGui::Separator();
 
-            ImGui::Text("0 is the placeholder id for nullopt.");
-
-            ImGui::Separator();
-
-            ImGui::Text(fmt::format("m_ComponentUnderMouse: {}", m_ComponentUnderMouse ? m_ComponentUnderMouse.value()->id : 0).c_str());
-            ImGui::Text(fmt::format("m_ComponentUnderMouse type: {}", m_ComponentUnderMouse ? componentTypeToString(m_ComponentUnderMouse.value()->type) : "").c_str());
             if (m_ComponentUnderMouse)
             {
-                if (auto gate = std::dynamic_pointer_cast<NandGate>(*m_ComponentUnderMouse); gate != nullptr)
+                auto& component = (*m_ComponentUnderMouse).get();
+                auto  typeName  = kComponentTypeStrings[component.type];
+                ImGui::Text(fmt::format("m_ComponentUnderMouse: {} ({})", component.id.value, typeName).c_str());
+                if (component.type == NAND)
                 {
-                    ImGui::Text(fmt::format(" - a: {}", gate->getInputNode1()->getValue()).c_str());
-                    ImGui::Text(fmt::format(" - b: {}", gate->getInputNode2()->getValue()).c_str());
-                    ImGui::Text(fmt::format(" - o: {}", gate->getOutputNode()->getValue()).c_str());
+                    auto& gate = logicSim.getGate(component);
+                    ImGui::Text(fmt::format("- input0 value: {}", logicSim.getNodeValue(gate.input0Id)).c_str());
+                    ImGui::Text(fmt::format("- input1 value: {}", logicSim.getNodeValue(gate.input1Id)).c_str());
+                    ImGui::Text(fmt::format("- output value: {}", logicSim.getNodeValue(gate.outputId)).c_str());
                 }
-                else if (auto node = std::dynamic_pointer_cast<Node>(*m_ComponentUnderMouse); node != nullptr)
+                else if (component.type == NODE)
                 {
-                    ImGui::Text(fmt::format(" - value: {}", node->getValue()).c_str());
+                    auto& node = logicSim.getNode(component);
+                    ImGui::Text(fmt::format("- value: {}", node.value).c_str());
                 }
+
+                ImGui::Separator();
             }
 
-            ImGui::Separator();
-
+            /*
             ImGui::Text(fmt::format("m_ComponentBeingMoved: {}", m_ComponentBeingMoved ? m_ComponentBeingMoved.value()->id : 0).c_str());
             ImGui::Text(fmt::format("m_ComponentBeingMoved type: {}", m_ComponentBeingMoved ? componentTypeToString(m_ComponentBeingMoved.value()->type) : "").c_str());
 
@@ -817,6 +903,7 @@ void Renderer::drawUI(LogicSim& logicSim)
             ImGui::Text(fmt::format("m_ComponentConnectionSource type: {}", m_ComponentConnectionSource ? componentTypeToString(m_ComponentConnectionSource.value()->type) : "").c_str());
             ImGui::Text(fmt::format("m_ComponentConnectionTarget: {}", m_ComponentConnectionTarget ? m_ComponentConnectionTarget.value()->id : 0).c_str());
             ImGui::Text(fmt::format("m_ComponentConnectionTarget type: {}", m_ComponentConnectionTarget ? componentTypeToString(m_ComponentConnectionTarget.value()->type) : "").c_str());
+            */
 
             ImGui::EndChild();
         }

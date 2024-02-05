@@ -4,6 +4,8 @@
 
 #include "logic/logic_sim.h"
 
+#include <optional>
+
 class Renderer
 {
 public:
@@ -69,14 +71,14 @@ private:
     }
 
     // All states (these are cleared every redraw)
-    std::optional<std::shared_ptr<Component>> m_ComponentUnderMouse;
+    std::optional<std::reference_wrapper<Component>> m_ComponentUnderMouse;
 
     // CanvasMovingComponent
-    std::optional<std::shared_ptr<Component>> m_ComponentBeingMoved;
+    std::optional<std::reference_wrapper<Component>> m_ComponentBeingMoved;
 
     // CanvasConnectingComponents
-    std::optional<std::shared_ptr<Component>> m_ComponentConnectionSource;
-    std::optional<std::shared_ptr<Component>> m_ComponentConnectionTarget;
+    std::optional<std::reference_wrapper<Component>> m_ComponentConnectionSource;
+    std::optional<std::reference_wrapper<Component>> m_ComponentConnectionTarget;
 
     // SDL2
     SDL_Window*   m_Window;
