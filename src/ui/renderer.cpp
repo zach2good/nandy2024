@@ -453,11 +453,29 @@ void Renderer::draw(LogicSim& logicSim)
         break;
         case UIState::CanvasSelecting:
         {
-            // Handle offset and zoom
-            float x = m_OffsetX + m_MouseDragStartX;
-            float y = m_OffsetY + m_MouseDragStartY;
-            float w = m_OffsetX + m_CursorX - m_MouseDragStartX;
-            float h = m_OffsetY + m_CursorY - m_MouseDragStartY;
+            auto doRectanglesIntersect = [](float rect1X, float rect1Y, float rect1W, float rect1H,
+                                            float rect2X, float rect2Y, float rect2W, float rect2H)
+            {
+                // Check if one rectangle is to the left of the other
+                if (rect1X + rect1W < rect2X || rect2X + rect2W < rect1X)
+                {
+                    return false;
+                }
+                if (rect1Y + rect1H < rect2Y || rect2Y + rect2H < rect1Y)
+                {
+                    return false;
+                }
+                return true;
+            };
+
+            // TODO: Make it select components when their bounding box is intersected by the selection rectangle
+            // Not just contained within it
+
+            // x, y, w, h of the selection rectangle, in screen space
+            float x = m_MouseDragStartX;
+            float y = m_MouseDragStartY;
+            float w = m_CursorX - m_MouseDragStartX;
+            float h = m_CursorY - m_MouseDragStartY;
 
             if (w < 0)
             {
@@ -471,30 +489,56 @@ void Renderer::draw(LogicSim& logicSim)
                 h = -h;
             }
 
-            /*
-            // NOTE: This routine doesn't work right
-            std::vector<ComponentPtr> selectedComponents;
+            float zoomedX = x * m_Zoom + m_OffsetX;
+            float zoomedY = y * m_Zoom + m_OffsetY;
+            float zoomedW = w * m_Zoom;
+            float zoomedH = h * m_Zoom;
+
+            std::unordered_set<Component*> selectedComponents;
             for (auto& node : logicSim.nodes)
             {
-                if ((node->x + m_OffsetX) > x && (node->x + m_OffsetX) < x + w && (node->y + m_OffsetY) > y && (node->y + m_OffsetY) < y + h)
+               // Get component bounds out of node and check, adjusting for zoom
+                auto& component = logicSim.components[node.componentId.value];
+                float componentScreenX = (component.x + m_OffsetX) * m_Zoom;
+                float componentScreenY = (component.y + m_OffsetY) * m_Zoom;
+                float componentScreenW = component.w * m_Zoom;
+                float componentScreenH = component.h * m_Zoom;
+                if (doRectanglesIntersect(
+                    zoomedX, zoomedY, zoomedW, zoomedH,
+                    componentScreenX, componentScreenY, componentScreenW, componentScreenH))
                 {
-                    selectedComponents.push_back(node);
+                    selectedComponents.insert(&component);
                 }
             }
             for (auto& gate : logicSim.gates)
             {
-                if ((gate->x + m_OffsetX) > x && (gate->x + m_OffsetX) < x + w && (gate->y + m_OffsetY) > y && (gate->y + m_OffsetY) < y + h)
+                // Get component bounds out of gate and check, adjusting for zoom
+                auto& component = logicSim.components[gate.componentId.value];
+                float componentScreenX = (component.x + m_OffsetX) * m_Zoom;
+                float componentScreenY = (component.y + m_OffsetY) * m_Zoom;
+                float componentScreenW = component.w * m_Zoom;
+                float componentScreenH = component.h * m_Zoom;
+                if (doRectanglesIntersect(zoomedX, zoomedY, zoomedW, zoomedH,
+                    componentScreenX, componentScreenY, componentScreenW, componentScreenH))
                 {
-                    selectedComponents.push_back(gate);
+                    selectedComponents.insert(&component);
+
+                    selectedComponents.insert(&component);
+                    auto& i0 = logicSim.components[logicSim.getNode(gate.input0Id).componentId.value];
+                    auto& i1 = logicSim.components[logicSim.getNode(gate.input1Id).componentId.value];
+                    auto& o0 = logicSim.components[logicSim.getNode(gate.outputId).componentId.value];
+                    selectedComponents.insert(&i0);
+                    selectedComponents.insert(&i1);
+                    selectedComponents.insert(&o0);
                 }
             }
-            // NOTE: This routine is correct
+
             // Find the minimum x,y and maximum x,y across all selected components
-            float minX = std::numeric_limits<float>::max();
-            float minY = std::numeric_limits<float>::max();
-            float maxX = std::numeric_limits<float>::min();
-            float maxY = std::numeric_limits<float>::min();
-            for (auto& component : selectedComponents)
+            float minX = std::numeric_limits<float>::infinity();
+            float minY = std::numeric_limits<float>::infinity();
+            float maxX = -std::numeric_limits<float>::infinity();
+            float maxY = -std::numeric_limits<float>::infinity();
+            for (auto component : selectedComponents)
             {
                 minX = std::min(minX, (component->x + m_OffsetX));
                 minY = std::min(minY, (component->y + m_OffsetY));
@@ -504,8 +548,11 @@ void Renderer::draw(LogicSim& logicSim)
 
             // Draw a rectangle around the selected components
             SDL_SetRenderDrawColor(m_Renderer, 64, 64, 64, 255);
-            drawPrimitiveRectangle(minX * m_Zoom, minY * m_Zoom, (maxX - minX) * m_Zoom, (maxY - minY) * m_Zoom);
-            */
+            drawPrimitiveRectangle(
+                minX * m_Zoom,
+                minY * m_Zoom,
+                (maxX - minX) * m_Zoom,
+                (maxY - minY) * m_Zoom);
 
             if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
             {
@@ -515,14 +562,13 @@ void Renderer::draw(LogicSim& logicSim)
             }
             else
             {
-                /*
                 // TODO: Output selected components to the console as JSON
                 spdlog::info("Selected {} components", selectedComponents.size());
-                for (auto& component : selectedComponents)
+                for (auto component : selectedComponents)
                 {
-                    spdlog::info("{}: {}", component->id, component->type);
+                    spdlog::info("{}", component->id.value);
                 }
-                */
+
                 m_UIState = UIState::None;
             }
         }
@@ -600,20 +646,6 @@ void Renderer::drawUI(LogicSim& logicSim)
             {
                 m_UIState = UIState::UIDragging;
                 ImGui::SetDragDropPayload("NODE", "NODE", sizeof("NODE"));
-
-                // Preview tooltip
-                ImGui::Text("Drag and drop me!");
-
-                ImGui::EndDragDropSource();
-            }
-
-            // Break
-
-            ImGui::Button("Output", ImVec2(50, 50));
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_AcceptNoDrawDefaultRect))
-            {
-                m_UIState = UIState::UIDragging;
-                ImGui::SetDragDropPayload("OUTPUT", "OUTPUT", sizeof("OUTPUT"));
 
                 // Preview tooltip
                 ImGui::Text("Drag and drop me!");
@@ -786,13 +818,6 @@ void Renderer::drawUI(LogicSim& logicSim)
                             logicSim.addClockNode(x + 50.0f, y + 50.0f); // TODO
                             m_UIState = UIState::None;
                         }
-                        /*
-                        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("OUTPUT"))
-                        {
-                            logicSim.addOutputNode(x + 50.0f, y + 50.0f); // TODO
-                            m_UIState = UIState::None;
-                        }
-                        */
 
                         ImGui::EndDragDropTarget();
                     }
