@@ -27,8 +27,9 @@ typedef union SDL_Event SDL_Event;
 #include "utils.h"
 
 // External includes
+#include <fmt/core.h>
+#include <fmt/format.h>
 #include <spdlog/spdlog.h>
-#include <spdlog/fmt/fmt.h>
 
 // Typedefs
 typedef std::uint8_t   u8;

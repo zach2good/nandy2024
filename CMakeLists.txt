@@ -7,9 +7,18 @@ include(cmake/CPM.cmake)
 find_package(OpenGL REQUIRED)
 
 CPMAddPackage(
+    NAME fmt
+    GITHUB_REPOSITORY fmtlib/fmt
+    GIT_TAG 10.1.1
+)
+
+CPMAddPackage(
     NAME spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog
-    GIT_TAG v1.x
+    GIT_TAG v1.12.0
+    OPTIONS
+        "SPDLOG_ENABLE_PCH ON"
+        "SPDLOG_FMT_EXTERNAL ON"
 )
 
 CPMAddPackage(
@@ -82,7 +91,7 @@ set(SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME} spdlog SDL2::SDL2-static imgui stb nlohmann_json)
+target_link_libraries(${PROJECT_NAME} fmt::fmt spdlog SDL2::SDL2-static imgui stb nlohmann_json)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_include_directories(${PROJECT_NAME}
     PRIVATE

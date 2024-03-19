@@ -348,7 +348,7 @@ void Renderer::draw(LogicSim& logicSim)
         break;
         case UIState::CanvasMovingComponent:
         {
-            if (m_ComponentBeingMoved && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            if (m_ComponentBeingMoved && ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 // We know the component is a NAND if we're here
                 auto& component = (*m_ComponentBeingMoved).get();
@@ -366,6 +366,11 @@ void Renderer::draw(LogicSim& logicSim)
                 component.x += ImGui::GetIO().MouseDelta.x / m_Zoom;
                 component.y += ImGui::GetIO().MouseDelta.y / m_Zoom;
 
+                auto snapToGrid = [](float n, float grid) { return grid * round(n / grid); };
+                component.x = snapToGrid(component.x, 20.0f);
+                component.y = snapToGrid(component.y, 20.0f);
+
+                // Find and fixup all connected nodes
                 // TODO: This is gross, make helpers
                 auto& i0c = logicSim.components[logicSim.getNode(gate.input0Id).componentId.value];
                 auto& i1c = logicSim.components[logicSim.getNode(gate.input1Id).componentId.value];
@@ -388,7 +393,7 @@ void Renderer::draw(LogicSim& logicSim)
         break;
         case UIState::CanvasConnectingComponents:
         {
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && m_ComponentConnectionSource)
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left) && m_ComponentConnectionSource)
             {
                 // Draw a line from the start of the drag to the current mouse position
                 SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
@@ -554,7 +559,7 @@ void Renderer::draw(LogicSim& logicSim)
                 (maxX - minX) * m_Zoom,
                 (maxY - minY) * m_Zoom);
 
-            if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 // Draw a rectangle from the start of the drag to the current mouse position
                 SDL_SetRenderDrawColor(m_Renderer, 255, 255, 255, 255);
