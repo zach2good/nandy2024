@@ -24,13 +24,14 @@ CPMAddPackage(
 CPMAddPackage(
     NAME SDL2
     GIT_REPOSITORY https://github.com/libsdl-org/SDL
-    GIT_TAG SDL2
+    GIT_TAG release-2.30.1
 )
 
 CPMAddPackage(
     NAME imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui
-    GIT_TAG docking
+    # docking branch
+    GIT_TAG 40df3db1a2a0f034257efad3c817c7ead5930257
 )
 if(imgui_ADDED)
     add_library(imgui
