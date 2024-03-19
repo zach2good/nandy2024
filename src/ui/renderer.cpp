@@ -577,6 +577,12 @@ void Renderer::draw(LogicSim& logicSim)
                 m_UIState = UIState::None;
             }
         }
+        break;
+        case UIState::UIDragging:
+        {
+            // TODO:
+            // Do nothing
+        }
     }
 
     // Render to the screen
@@ -847,58 +853,58 @@ void Renderer::drawUI(LogicSim& logicSim)
         ImGui::SameLine();
         ImGui::BeginChild("Right", ImVec2(0, 0), ImGuiChildFlags_Border);
         {
-            ImGui::Text(fmt::format("Components count: {}", logicSim.components.size()).c_str());
-            ImGui::Text(fmt::format("Gates count: {}", logicSim.gates.size()).c_str());
-            ImGui::Text(fmt::format("Nodes count: {}", logicSim.nodes.size()).c_str());
-            ImGui::Text(fmt::format("Step count: {}", logicSim.stepCount()).c_str());
+            ImGui::Text("%s", fmt::format("Components count: {}", logicSim.components.size()).c_str());
+            ImGui::Text("%s", fmt::format("Gates count: {}", logicSim.gates.size()).c_str());
+            ImGui::Text("%s", fmt::format("Nodes count: {}", logicSim.nodes.size()).c_str());
+            ImGui::Text("%s", fmt::format("Step count: {}", logicSim.stepCount()).c_str());
 
             auto ns = logicSim.stepTime();
             if (ns > 1000000)
             {
-                ImGui::Text(fmt::format("Step time: {:.2f}ms", ns / 1000000.0f).c_str());
+                ImGui::Text("%s", fmt::format("Step time: {:.2f}ms", ns / 1000000.0f).c_str());
             }
             else if (ns > 1000)
             {
-                ImGui::Text(fmt::format("Step time: {:.2f}us", ns / 1000.0f).c_str());
+                ImGui::Text("%s", fmt::format("Step time: {:.2f}us", ns / 1000.0f).c_str());
             }
             else
             {
-                ImGui::Text(fmt::format("Step time: {:.2f}ns", ns).c_str());
+                ImGui::Text("%s", fmt::format("Step time: {:.2f}ns", ns).c_str());
             }
 
             auto Hz = 1000000000.0f / logicSim.stepTime(); // From nano to Hz
             if (Hz > 1000000.0f)
             {
-                ImGui::Text(fmt::format("Hz: {:.2f}MHz", Hz / 1000000.0f).c_str());
+                ImGui::Text("%s", fmt::format("Hz: {:.2f}MHz", Hz / 1000000.0f).c_str());
             }
             else if (Hz > 1000.0f)
             {
-                ImGui::Text(fmt::format("Hz: {:.2f}kHz", Hz / 1000.0f).c_str());
+                ImGui::Text("%s", fmt::format("Hz: {:.2f}kHz", Hz / 1000.0f).c_str());
             }
             else
             {
-                ImGui::Text(fmt::format("Hz: {:.2f}Hz", Hz).c_str());
+                ImGui::Text("%s", fmt::format("Hz: {:.2f}Hz", Hz).c_str());
             }
 
-            ImGui::Text(fmt::format("Ops total: {}", logicSim.opsTotalCount()).c_str());
-            ImGui::Text(fmt::format("Ops per step: {}", logicSim.opsPerStep()).c_str());
+            ImGui::Text("%s", fmt::format("Ops total: {}", logicSim.opsTotalCount()).c_str());
+            ImGui::Text("%s", fmt::format("Ops per step: {}", logicSim.opsPerStep()).c_str());
 
             ImGui::Separator();
 
-            ImGui::Text(fmt::format("Mouse pos: {}, {}", mousePos.x, mousePos.y).c_str());
-            ImGui::Text(fmt::format("Mouse delta: {}, {}", mouseDelta.x, mouseDelta.y).c_str());
+            ImGui::Text("%s", fmt::format("Mouse pos: {}, {}", mousePos.x, mousePos.y).c_str());
+            ImGui::Text("%s", fmt::format("Mouse delta: {}, {}", mouseDelta.x, mouseDelta.y).c_str());
             if (m_CursorX == 0.0f && m_CursorY == 0.0f)
             {
                 ImGui::Text("Canvas pos: None");
             }
             else
             {
-                ImGui::Text(fmt::format("Canvas pos: {}, {}", m_CursorX, m_CursorY).c_str());
+                ImGui::Text("%s", fmt::format("Canvas pos: {}, {}", m_CursorX, m_CursorY).c_str());
             }
 
             ImGui::Separator();
 
-            ImGui::Text(fmt::format("UI State: {}", UIStateToString(m_UIState)).c_str());
+            ImGui::Text("%s", fmt::format("UI State: {}", UIStateToString(m_UIState)).c_str());
 
             ImGui::Separator();
 
@@ -906,33 +912,33 @@ void Renderer::drawUI(LogicSim& logicSim)
             {
                 auto& component = (*m_ComponentUnderMouse).get();
                 auto  typeName  = kComponentTypeStrings[component.type];
-                ImGui::Text(fmt::format("m_ComponentUnderMouse: {} ({})", component.id.value, typeName).c_str());
+                ImGui::Text("%s", fmt::format("m_ComponentUnderMouse: {} ({})", component.id.value, typeName).c_str());
                 if (component.type == NAND)
                 {
                     auto& gate = logicSim.getGate(component);
-                    ImGui::Text(fmt::format("- input0 value: {}", logicSim.getNodeValue(gate.input0Id)).c_str());
-                    ImGui::Text(fmt::format("- input1 value: {}", logicSim.getNodeValue(gate.input1Id)).c_str());
-                    ImGui::Text(fmt::format("- output value: {}", logicSim.getNodeValue(gate.outputId)).c_str());
+                    ImGui::Text("%s", fmt::format("- input0 value: {}", logicSim.getNodeValue(gate.input0Id)).c_str());
+                    ImGui::Text("%s", fmt::format("- input1 value: {}", logicSim.getNodeValue(gate.input1Id)).c_str());
+                    ImGui::Text("%s", fmt::format("- output value: {}", logicSim.getNodeValue(gate.outputId)).c_str());
                 }
                 else if (component.type == NODE)
                 {
                     auto& node = logicSim.getNode(component);
-                    ImGui::Text(fmt::format("- value: {}", node.value).c_str());
+                    ImGui::Text("%s", fmt::format("- value: {}", node.value).c_str());
                 }
 
                 ImGui::Separator();
             }
 
             /*
-            ImGui::Text(fmt::format("m_ComponentBeingMoved: {}", m_ComponentBeingMoved ? m_ComponentBeingMoved.value()->id : 0).c_str());
-            ImGui::Text(fmt::format("m_ComponentBeingMoved type: {}", m_ComponentBeingMoved ? componentTypeToString(m_ComponentBeingMoved.value()->type) : "").c_str());
+            ImGui::Text("%s", fmt::format("m_ComponentBeingMoved: {}", m_ComponentBeingMoved ? m_ComponentBeingMoved.value()->id : 0).c_str());
+            ImGui::Text("%s", fmt::format("m_ComponentBeingMoved type: {}", m_ComponentBeingMoved ? componentTypeToString(m_ComponentBeingMoved.value()->type) : "").c_str());
 
             ImGui::Separator();
 
-            ImGui::Text(fmt::format("m_ComponentConnectionSource: {}", m_ComponentConnectionSource ? m_ComponentConnectionSource.value()->id : 0).c_str());
-            ImGui::Text(fmt::format("m_ComponentConnectionSource type: {}", m_ComponentConnectionSource ? componentTypeToString(m_ComponentConnectionSource.value()->type) : "").c_str());
-            ImGui::Text(fmt::format("m_ComponentConnectionTarget: {}", m_ComponentConnectionTarget ? m_ComponentConnectionTarget.value()->id : 0).c_str());
-            ImGui::Text(fmt::format("m_ComponentConnectionTarget type: {}", m_ComponentConnectionTarget ? componentTypeToString(m_ComponentConnectionTarget.value()->type) : "").c_str());
+            ImGui::Text("%s", fmt::format("m_ComponentConnectionSource: {}", m_ComponentConnectionSource ? m_ComponentConnectionSource.value()->id : 0).c_str());
+            ImGui::Text("%s", fmt::format("m_ComponentConnectionSource type: {}", m_ComponentConnectionSource ? componentTypeToString(m_ComponentConnectionSource.value()->type) : "").c_str());
+            ImGui::Text("%s", fmt::format("m_ComponentConnectionTarget: {}", m_ComponentConnectionTarget ? m_ComponentConnectionTarget.value()->id : 0).c_str());
+            ImGui::Text("%s", fmt::format("m_ComponentConnectionTarget type: {}", m_ComponentConnectionTarget ? componentTypeToString(m_ComponentConnectionTarget.value()->type) : "").c_str());
             */
 
             ImGui::EndChild();

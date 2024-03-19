@@ -20,7 +20,7 @@ protected:
     {
         memory_buf_t formatted;
         applog_sink<Mutex>::formatter_->format(msg, formatted);
-        AppLog::get().Log(fmt::to_string(formatted).c_str());
+        AppLog::get().Log("%s", fmt::to_string(formatted).c_str());
     }
     void flush_() override {}
 };
