@@ -256,6 +256,7 @@ void Renderer::draw(LogicSim& logicSim)
             m_ComponentUnderMouse = component;
         }
     }
+
     for (auto& gate : logicSim.gates)
     {
         auto& component = logicSim.components[gate.componentId.value];
@@ -314,6 +315,12 @@ void Renderer::draw(LogicSim& logicSim)
                 m_MouseDragStartY = m_CursorY;
                 m_ComponentConnectionSource = m_ComponentUnderMouse;
             }
+            // else if (m_ComponentUnderMouse && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+            // {
+            //     auto& component = (*m_ComponentUnderMouse).get();
+            //     logicSim.removeComponent(component.id);
+            //     m_ComponentUnderMouse = std::nullopt;
+            // }
             else if (m_ComponentUnderMouse && (*m_ComponentUnderMouse).get().type == NODE && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
             {
                 auto& component = (*m_ComponentUnderMouse).get();
@@ -683,6 +690,23 @@ void Renderer::drawUI(LogicSim& logicSim)
 
             ImGui::Text("User Components");
 
+            // Break
+            ImGui::Separator();
+
+            ImGui::Text("Non-functional Components");
+
+            ImGui::Button("Text", ImVec2(50, 50));
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_AcceptNoDrawDefaultRect))
+            {
+                m_UIState = UIState::UIDragging;
+                ImGui::SetDragDropPayload("TEXT", "TEXT", sizeof("TEXT"));
+
+                // Preview tooltip
+                ImGui::Text("Drag and drop me!");
+
+                ImGui::EndDragDropSource();
+            }
+
             ImGui::EndChild();
         }
 
@@ -827,6 +851,11 @@ void Renderer::drawUI(LogicSim& logicSim)
                         else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CLK"))
                         {
                             logicSim.addClockNode(x + 50.0f, y + 50.0f); // TODO
+                            m_UIState = UIState::None;
+                        }
+                        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXT"))
+                        {
+                            // logicSim.addTextNote(x + 50.0f, y + 50.0f);
                             m_UIState = UIState::None;
                         }
 

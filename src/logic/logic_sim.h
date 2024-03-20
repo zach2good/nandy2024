@@ -124,6 +124,7 @@ public:
     std::vector<Component>           components;
     std::vector<Node>                nodes;
     std::vector<NandGate>            gates;
+
     std::vector<std::vector<NodeId>> drivingNodes;
     std::vector<NodeId>              clockNodes;
 
@@ -133,9 +134,110 @@ public:
     // TODO: replace this with something more efficient
     std::queue<Component> bfsQueue;
 
+// Helpers for testing
+// TODO: Move these tests to their own file
+private:
+    NodeId nandGate(NodeId input1, NodeId input2)
+    {
+        auto gate = addGate(0, 0);
+        connect(input1, getGateInput0Id(gate));
+        connect(input2, getGateInput1Id(gate));
+        return getGateOutputId(gate);
+    }
+
+    NodeId notGate(NodeId input)
+    {
+        return nandGate(input, input);
+    }
+
+    NodeId andGate(NodeId input1, NodeId input2)
+    {
+        NodeId nandOut = nandGate(input1, input2);
+        return nandGate(nandOut, nandOut);
+    }
+
+    NodeId orGate(NodeId input1, NodeId input2)
+    {
+        NodeId invert1 = nandGate(input1, input1);
+        NodeId invert2 = nandGate(input2, input2);
+        return nandGate(invert1, invert2);
+    }
+
+    NodeId xorGate(NodeId input1, NodeId input2)
+    {
+        NodeId nand1 = nandGate(input1, input2);
+        NodeId nand2 = nandGate(input1, nand1);
+        NodeId nand3 = nandGate(input2, nand1);
+        return nandGate(nand2, nand3);
+    }
+
+    // 2-to-1 MUX Helper
+    NodeId mux(NodeId a, NodeId b, NodeId sel)
+    {
+        NodeId notSel = notGate(sel);
+        NodeId aAndNotSel = andGate(a, notSel);
+        NodeId bAndSel = andGate(b, sel);
+        return orGate(aAndNotSel, bAndSel);
+    }
+
+    // 1-to-2 DMUX Helper
+    void dmux(NodeId input, NodeId sel, NodeId& y0, NodeId& y1)
+    {
+        NodeId notSel = notGate(sel);
+        y0 = andGate(input, notSel);
+        y1 = andGate(input, sel);
+    }
+
+    NodeId or8Way(NodeId in1,
+                  NodeId in2,
+                  NodeId in3,
+                  NodeId in4,
+                  NodeId in5,
+                  NodeId in6,
+                  NodeId in7,
+                  NodeId in8)
+    {
+        NodeId or12 = orGate(in1, in2);
+        NodeId or34 = orGate(in3, in4);
+        NodeId or56 = orGate(in5, in6);
+        NodeId or78 = orGate(in7, in8);
+
+        NodeId or1234 = orGate(or12, or34);
+        NodeId or5678 = orGate(or56, or78);
+
+        return orGate(or1234, or5678);
+    }
+
+    struct HalfAdderResult
+    {
+        NodeId sum;
+        NodeId carry;
+    };
+
+    HalfAdderResult halfAdder(NodeId a, NodeId b)
+    {
+        NodeId sum = xorGate(a, b);
+        NodeId carry = andGate(a, b);
+        return {sum, carry};
+    }
+
+    struct FullAdderResult
+    {
+        NodeId sum;
+        NodeId carry;
+    };
+
+    FullAdderResult fullAdder(NodeId a, NodeId b, NodeId cin)
+    {
+        HalfAdderResult firstHalf = halfAdder(a, b);
+        HalfAdderResult secondHalf = halfAdder(firstHalf.sum, cin);
+        NodeId carry = orGate(firstHalf.carry, secondHalf.carry);
+        return {secondHalf.sum, carry};
+    }
+
     void sanityTests()
     {
-        // Basic Node Chain
+        // Node Chain
         {
             auto n0 = addNode(0, 0);
             auto n1 = addNode(0, 0);
@@ -155,7 +257,7 @@ public:
             reset();
         }
 
-        // Basic NAND Gate
+        // NAND Gate
         {
             auto n0 = addNode(0, 0);
             auto n1 = addNode(0, 0);
@@ -179,33 +281,18 @@ public:
             reset();
         }
 
-        // Basic AND Gate (NAND + NAND as NOT)
+        // AND Gate
         {
-            auto n0 = addNode(0, 0);
-            auto n1 = addNode(0, 0);
-            auto n2 = addNode(0, 0);
-            auto n3 = addNode(0, 0);
-
-            auto g0 = addGate(0, 0);
-            auto g1 = addGate(0, 0);
-
-            connect(n0, getGateInput0Id(g0));
-            connect(n1, getGateInput1Id(g0));
-            connect(getGateOutputId(g0), n2);
-
-            connect(n2, getGateInput0Id(g1));
-            connect(n2, getGateInput1Id(g1));
-            connect(getGateOutputId(g1), n3);
-
+            NodeId n0 = addNode(0, 0);
+            NodeId n1 = addNode(0, 0);
             setNodeValue(n0, true);
             setNodeValue(n1, true);
 
+            NodeId output = andGate(n0, n1);
+
             step();
 
-            assert(getNodeValue(n0) == true);
-            assert(getNodeValue(n1) == true);
-            assert(getNodeValue(n2) == false);
-            assert(getNodeValue(n3) == true);
+            assert(getNodeValue(output) == true);
 
             reset();
         }
@@ -237,15 +324,164 @@ public:
 
             reset();
         }
+
+        // 3-input AND Gate
+        {
+            NodeId n0 = addNode(0, 0), n1 = addNode(0, 0), n2 = addNode(0, 0);
+            setNodeValue(n0, true);
+            setNodeValue(n1, true);
+            setNodeValue(n2, true);
+
+            NodeId and01 = andGate(n0, n1);
+            NodeId and012 = andGate(and01, n2);
+
+            step();
+
+            assert(getNodeValue(and012) == true);
+
+            // Test with one input false
+            setNodeValue(n2, false);
+            step();
+
+            assert(getNodeValue(and012) == false);
+
+            reset();
+        }
+
+        // MUX
+        {
+            NodeId a = addNode(0, 0), b = addNode(0, 0), sel = addNode(0, 0);
+            setNodeValue(a, false);
+            setNodeValue(b, true);
+            setNodeValue(sel, true);
+
+            NodeId output = mux(a, b, sel);
+
+            step();
+
+            assert(getNodeValue(output) == true);
+
+            reset();
+        }
+
+        // DMUX
+        {
+            NodeId input = addNode(0, 0), sel = addNode(0, 0);
+            setNodeValue(input, true);
+            setNodeValue(sel, false);
+
+            NodeId y0, y1;
+            dmux(input, sel, y0, y1);
+
+            step();
+
+            assert(getNodeValue(y0) == true);
+            assert(getNodeValue(y1) == false);
+
+            reset();
+        }
+
+        // 8-way OR
+        {
+            NodeId in1 = addNode(0, 0);
+            NodeId in2 = addNode(0, 0);
+            NodeId in3 = addNode(0, 0);
+            NodeId in4 = addNode(0, 0);
+            NodeId in5 = addNode(0, 0);
+            NodeId in6 = addNode(0, 0);
+            NodeId in7 = addNode(0, 0);
+            NodeId in8 = addNode(0, 0);
+
+            setNodeValue(in1, false);
+            setNodeValue(in2, false);
+            setNodeValue(in3, false);
+            setNodeValue(in4, false);
+            setNodeValue(in5, false);
+            setNodeValue(in6, true);
+            setNodeValue(in7, false);
+            setNodeValue(in8, false);
+
+            NodeId result = or8Way(in1, in2, in3, in4, in5, in6, in7, in8);
+
+            step();
+
+            assert(getNodeValue(result) == true);
+
+            setNodeValue(in6, false);
+
+            step();
+
+            assert(getNodeValue(result) == false);
+
+            reset();
+        }
+
+        // Half-adder
+        {
+            // Test 0 + 0
+            auto a = addNode(0, 0), b = addNode(0, 0);
+            setNodeValue(a, false);
+            setNodeValue(b, false);
+            auto result = halfAdder(a, b);
+            step();
+            assert(getNodeValue(result.sum) == false && getNodeValue(result.carry) == false);
+
+            // Test 1 + 0
+            setNodeValue(a, true);
+            setNodeValue(b, false);
+            result = halfAdder(a, b);
+            step();
+            assert(getNodeValue(result.sum) == true && getNodeValue(result.carry) == false);
+
+            // Test 0 + 1
+            setNodeValue(a, false);
+            setNodeValue(b, true);
+            result = halfAdder(a, b);
+            step();
+            assert(getNodeValue(result.sum) == true && getNodeValue(result.carry) == false);
+
+            // Test 1 + 1
+            setNodeValue(a, true);
+            setNodeValue(b, true);
+            result = halfAdder(a, b);
+            step();
+            assert(getNodeValue(result.sum) == false && getNodeValue(result.carry) == true);
+
+            reset();
+        }
+
+        // Full-adder
+        {
+            // Test 0 + 0 + 0
+            auto a = addNode(0, 0), b = addNode(0, 0), cin = addNode(0, 0);
+            setNodeValue(a, false);
+            setNodeValue(b, false);
+            setNodeValue(cin, false);
+            auto result = fullAdder(a, b, cin);
+            step();
+            assert(getNodeValue(result.sum) == false && getNodeValue(result.carry) == false);
+
+            // Test 1 + 1 + 1
+            setNodeValue(a, true);
+            setNodeValue(b, true);
+            setNodeValue(cin, true);
+            result = fullAdder(a, b, cin);
+            step();
+            assert(getNodeValue(result.sum) == true && getNodeValue(result.carry) == true);
+
+            reset();
+        }
     }
 
 public:
     LogicSim()
     {
         spdlog::info("LogicSim()");
+
         components.reserve(1024);
         nodes.reserve(1024);
         gates.reserve(1024);
+
         drivingNodes.reserve(1024);
         clockNodes.reserve(1024);
         dirtyNodes.reserve(1024);
@@ -264,6 +500,7 @@ public:
         components = other.components;
         nodes      = other.nodes;
         gates      = other.gates;
+
         drivingNodes = other.drivingNodes;
         clockNodes = other.clockNodes;
         dirtyNodes = other.dirtyNodes;
@@ -274,6 +511,7 @@ public:
         components = std::move(other.components);
         nodes      = std::move(other.nodes);
         gates      = std::move(other.gates);
+
         drivingNodes = std::move(other.drivingNodes);
         clockNodes = std::move(other.clockNodes);
         dirtyNodes = std::move(other.dirtyNodes);
@@ -286,6 +524,7 @@ public:
             components = other.components;
             nodes      = other.nodes;
             gates      = other.gates;
+
             drivingNodes = other.drivingNodes;
             clockNodes = other.clockNodes;
             dirtyNodes = other.dirtyNodes;
@@ -298,6 +537,7 @@ public:
         components.clear();
         nodes.clear();
         gates.clear();
+
         drivingNodes.clear();
         clockNodes.clear();
         dirtyNodes.clear();
@@ -458,6 +698,30 @@ public:
     inline NandGate& getGate(Component& component)
     {
         return gates[std::get<GateId>(component.implId).value];
+    }
+
+    inline void removeComponent(ComponentId id)
+    {
+        auto& component = components[id.value];
+        if (component.type == NODE)
+        {
+            removeNode(std::get<NodeId>(component.implId));
+        }
+        else if (component.type == NAND)
+        {
+            removeGate(std::get<GateId>(component.implId));
+        }
+        components.erase(components.begin() + id.value);
+    }
+
+    inline void removeNode(NodeId id)
+    {
+        nodes.erase(nodes.begin() + id.value);
+    }
+
+    inline void removeGate(GateId id)
+    {
+        gates.erase(gates.begin() + id.value);
     }
 
 private:
