@@ -3,8 +3,12 @@
 #include "common.h"
 
 #include "logic/logic_sim.h"
+#include "states/uistate.h"
 
+#include <stack>
 #include <optional>
+#include <memory>
+#include <vector>
 
 class Renderer
 {
@@ -39,6 +43,9 @@ private:
     void drawPrimitiveCircle(int centerX, int centerY, int radius);
     void drawPrimitiveNAND(float x, float y, float w, float h, bool a, bool b, bool o);
     void drawUI(LogicSim& logicSim);
+
+    std::vector<ComponentId> m_SelectedComponents;
+    std::stack<std::unique_ptr<UIState>> m_UIStateStack;
 
     // TODO: Each UI state needs to be encapsulated in it's own class so it can have it's own storage and logic
     enum class UIState

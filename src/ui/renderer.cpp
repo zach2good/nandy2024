@@ -1,5 +1,6 @@
 #include "renderer.h"
 
+#include <cassert>
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
@@ -13,6 +14,8 @@
 
 #include "applog.h"
 #include "logic_sim.h"
+
+#include "states/state_none.h"
 
 Renderer::Renderer(std::string const& title, std::size_t width, std::size_t height)
 : m_Width(width)
@@ -63,6 +66,9 @@ Renderer::Renderer(std::string const& title, std::size_t width, std::size_t heig
     ImGui_ImplSDLRenderer2_Init(m_Renderer);
 
     m_CanvasTexture = SDL_CreateTexture(m_Renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, Config::kCanvasWidth, Config::kCanvasHeight);
+
+    // Initial state
+    m_UIStateStack.push(std::make_unique<StateNone>());
 }
 
 Renderer::~Renderer()
@@ -194,6 +200,8 @@ void Renderer::drawPrimitiveNAND(float x, float y, float w, float h, bool a, boo
 
 void Renderer::draw(LogicSim& logicSim)
 {
+    assert(!m_UIStateStack.empty());
+
     // Render to a texture
     SDL_SetRenderTarget(m_Renderer, m_CanvasTexture);
     SDL_RenderClear(m_Renderer); // Clear the texture
@@ -279,6 +287,29 @@ void Renderer::draw(LogicSim& logicSim)
         }
     }
 
+    if (!m_SelectedComponents.empty())
+    {
+        float minX = std::numeric_limits<float>::infinity();
+        float minY = std::numeric_limits<float>::infinity();
+        float maxX = -std::numeric_limits<float>::infinity();
+        float maxY = -std::numeric_limits<float>::infinity();
+
+        for (auto& componentId : m_SelectedComponents)
+        {
+            auto& component = logicSim.components[componentId.value];
+            minX = std::min(minX, component.x);
+            minY = std::min(minY, component.y);
+            maxX = std::max(maxX, component.x + component.w);
+            maxY = std::max(maxY, component.y + component.h);
+        }
+
+        // Yellow
+        SDL_SetRenderDrawColor(m_Renderer, 255, 255, 0, 255);
+        drawPrimitiveRectangle(m_OffsetX + minX * m_Zoom, m_OffsetY + minY * m_Zoom, (maxX - minX) * m_Zoom, (maxY - minY) * m_Zoom);
+    }
+
+    m_UIStateStack.top()->draw();
+
     switch (m_UIState)
     {
         case UIState::None:
@@ -338,6 +369,17 @@ void Renderer::draw(LogicSim& logicSim)
             {
                 m_UIState = UIState::CanvasPanning;
             }
+
+            if (ImGui::IsKeyDown(ImGuiKey_Delete) && !m_SelectedComponents.empty())
+            {
+                // TODO: This is very not safe
+                logicSim.stop();
+                for (auto& componentId : m_SelectedComponents)
+                {
+                    logicSim.removeComponent(componentId);
+                }
+                m_SelectedComponents.clear();
+            }
         }
         break;
         case UIState::CanvasPanning:
@@ -349,6 +391,10 @@ void Renderer::draw(LogicSim& logicSim)
             }
             else
             {
+                if (ImGui::GetIO().MouseDelta.x < 0.01f && ImGui::GetIO().MouseDelta.y < 0.01f)
+                {
+                    m_SelectedComponents.clear();
+                }
                 m_UIState = UIState::None;
             }
         }
@@ -545,26 +591,21 @@ void Renderer::draw(LogicSim& logicSim)
                 }
             }
 
-            // Find the minimum x,y and maximum x,y across all selected components
             float minX = std::numeric_limits<float>::infinity();
             float minY = std::numeric_limits<float>::infinity();
             float maxX = -std::numeric_limits<float>::infinity();
             float maxY = -std::numeric_limits<float>::infinity();
-            for (auto component : selectedComponents)
+
+            for (auto& component : selectedComponents)
             {
-                minX = std::min(minX, (component->x + m_OffsetX));
-                minY = std::min(minY, (component->y + m_OffsetY));
-                maxX = std::max(maxX, (component->x + component->w + m_OffsetX));
-                maxY = std::max(maxY, (component->y + component->h + m_OffsetY));
+                minX = std::min(minX, component->x);
+                minY = std::min(minY, component->y);
+                maxX = std::max(maxX, component->x + component->w);
+                maxY = std::max(maxY, component->y + component->h);
             }
 
-            // Draw a rectangle around the selected components
             SDL_SetRenderDrawColor(m_Renderer, 64, 64, 64, 255);
-            drawPrimitiveRectangle(
-                minX * m_Zoom,
-                minY * m_Zoom,
-                (maxX - minX) * m_Zoom,
-                (maxY - minY) * m_Zoom);
+            drawPrimitiveRectangle(m_OffsetX + minX * m_Zoom, m_OffsetY + minY * m_Zoom, (maxX - minX) * m_Zoom, (maxY - minY) * m_Zoom);
 
             if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
@@ -579,6 +620,7 @@ void Renderer::draw(LogicSim& logicSim)
                 for (auto component : selectedComponents)
                 {
                     spdlog::info("{}", component->id.value);
+                    m_SelectedComponents.push_back(component->id);
                 }
 
                 m_UIState = UIState::None;

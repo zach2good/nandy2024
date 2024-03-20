@@ -17,6 +17,7 @@ This is a continuation of my [first attempt at a NAND simulator](https://github.
   - All references and links, including in the UI, should be cleared out when a component is removed.
   - If a group, all in that group should be safely deleted.
   - ID reuse isn't important (for now).
+  - Deletion clears the current selection.
 - Component Selection
   - Mouse-over and Selection should be split. Single-component selection is the same as any other selection.
   - Track components that were selected. Move them around once selected. This could be a pseudo/temporary group?

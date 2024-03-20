@@ -721,6 +721,9 @@ public:
 
     inline void removeGate(GateId id)
     {
+        removeNode(gates[id.value].input0Id);
+        removeNode(gates[id.value].input1Id);
+        removeNode(gates[id.value].outputId);
         gates.erase(gates.begin() + id.value);
     }
 

@@ -4,6 +4,8 @@ project(nandy2024)
 
 include(cmake/CPM.cmake)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 find_package(OpenGL REQUIRED)
 
 CPMAddPackage(
