@@ -512,7 +512,7 @@ void Renderer::draw(LogicSim& logicSim)
         case UIState::CanvasSelecting:
         {
             auto doRectanglesIntersect = [](float rect1X, float rect1Y, float rect1W, float rect1H,
-                                            float rect2X, float rect2Y, float rect2W, float rect2H)
+                                                      float rect2X, float rect2Y, float rect2W, float rect2H) -> bool
             {
                 // Check if one rectangle is to the left of the other
                 if (rect1X + rect1W < rect2X || rect2X + rect2W < rect1X)
@@ -530,39 +530,38 @@ void Renderer::draw(LogicSim& logicSim)
             // Not just contained within it
 
             // x, y, w, h of the selection rectangle, in screen space
-            float x = m_MouseDragStartX;
-            float y = m_MouseDragStartY;
-            float w = m_CursorX - m_MouseDragStartX;
-            float h = m_CursorY - m_MouseDragStartY;
+            float canvasX = m_MouseDragStartX;
+            float canvasY = m_MouseDragStartY;
+            float canvasW = m_CursorX - m_MouseDragStartX;
+            float canvasH = m_CursorY - m_MouseDragStartY;
 
-            if (w < 0)
+            // Account for the selection being dragged in the opposite direction
+            if (canvasW < 0)
             {
-                x += w;
-                w = -w;
+                canvasX += canvasW;
+                canvasW = -canvasW;
             }
 
-            if (h < 0)
+            if (canvasH < 0)
             {
-                y += h;
-                h = -h;
+                canvasY += canvasH;
+                canvasH = -canvasH;
             }
-
-            float zoomedX = x * m_Zoom + m_OffsetX;
-            float zoomedY = y * m_Zoom + m_OffsetY;
-            float zoomedW = w * m_Zoom;
-            float zoomedH = h * m_Zoom;
 
             std::unordered_set<Component*> selectedComponents;
             for (auto& node : logicSim.nodes)
             {
                // Get component bounds out of node and check, adjusting for zoom
                 auto& component = logicSim.components[node.componentId.value];
-                float componentScreenX = (component.x + m_OffsetX) * m_Zoom;
-                float componentScreenY = (component.y + m_OffsetY) * m_Zoom;
+
+                // Convert to screen space
+                float componentScreenX = m_OffsetX + component.x * m_Zoom;
+                float componentScreenY = m_OffsetY + component.y * m_Zoom;
                 float componentScreenW = component.w * m_Zoom;
                 float componentScreenH = component.h * m_Zoom;
+
                 if (doRectanglesIntersect(
-                    zoomedX, zoomedY, zoomedW, zoomedH,
+                    canvasX, canvasY, canvasW, canvasH,
                     componentScreenX, componentScreenY, componentScreenW, componentScreenH))
                 {
                     selectedComponents.insert(&component);
@@ -572,11 +571,14 @@ void Renderer::draw(LogicSim& logicSim)
             {
                 // Get component bounds out of gate and check, adjusting for zoom
                 auto& component = logicSim.components[gate.componentId.value];
-                float componentScreenX = (component.x + m_OffsetX) * m_Zoom;
-                float componentScreenY = (component.y + m_OffsetY) * m_Zoom;
+
+                // Convert to screen space
+                float componentScreenX = m_OffsetX + component.x * m_Zoom;
+                float componentScreenY = m_OffsetY + component.y * m_Zoom;
                 float componentScreenW = component.w * m_Zoom;
                 float componentScreenH = component.h * m_Zoom;
-                if (doRectanglesIntersect(zoomedX, zoomedY, zoomedW, zoomedH,
+
+                if (doRectanglesIntersect(canvasX, canvasY, canvasW, canvasH,
                     componentScreenX, componentScreenY, componentScreenW, componentScreenH))
                 {
                     selectedComponents.insert(&component);
