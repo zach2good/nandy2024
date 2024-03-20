@@ -54,6 +54,7 @@ This is a continuation of my [first attempt at a NAND simulator](https://github.
 - Connect nodes by dragging L.Mouse between them.
 - Connect nodes in a selection by pressing C with an active selection.
 - Move components with L.Mouse.
+- Press R with components selected or with a component under your mouse to rotate it 90 degrees.
 
 ## Components
 
