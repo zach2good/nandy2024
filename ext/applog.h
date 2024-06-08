@@ -15,10 +15,10 @@ struct AppLog
 
     std::mutex m_Mutex;
 
-    ImGuiTextBuffer     Buf;
-    ImGuiTextFilter     Filter;
-    ImVector<int>       LineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
-    bool                AutoScroll;  // Keep scrolling if already at the bottom.
+    ImGuiTextBuffer Buf;
+    ImGuiTextFilter Filter;
+    ImVector<int>   LineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
+    bool            AutoScroll;  // Keep scrolling if already at the bottom.
 
     AppLog()
     {
@@ -37,7 +37,7 @@ struct AppLog
     {
         std::lock_guard<std::mutex> lock(m_Mutex);
 
-        int old_size = Buf.size();
+        int     old_size = Buf.size();
         va_list args;
         va_start(args, fmt);
         Buf.appendfv(fmt, args);
@@ -85,7 +85,7 @@ struct AppLog
                 ImGui::LogToClipboard();
 
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-            const char* buf = Buf.begin();
+            const char* buf     = Buf.begin();
             const char* buf_end = Buf.end();
             if (Filter.IsActive())
             {
@@ -96,7 +96,7 @@ struct AppLog
                 for (int line_no = 0; line_no < LineOffsets.Size; line_no++)
                 {
                     const char* line_start = buf + LineOffsets[line_no];
-                    const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
+                    const char* line_end   = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
                     if (Filter.PassFilter(line_start, line_end))
                         ImGui::TextUnformatted(line_start, line_end);
                 }
@@ -123,7 +123,7 @@ struct AppLog
                     for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
                     {
                         const char* line_start = buf + LineOffsets[line_no];
-                        const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
+                        const char* line_end   = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
                         ImGui::TextUnformatted(line_start, line_end);
                     }
                 }

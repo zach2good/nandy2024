@@ -27,7 +27,4 @@ SortIncludes: 'true'
 SortUsingDeclarations: 'true'
 SpaceBeforeParens: ControlStatements
 SpacesBeforeTrailingComments: 1
-Standard: Cpp20
 UseTab: Never
-
-...

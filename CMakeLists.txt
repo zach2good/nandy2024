@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 project(nandy2024)
 
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 include(cmake/CPM.cmake)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -77,27 +81,23 @@ CPMAddPackage(
 )
 
 set(SOURCES
-    src/app.cpp
-    src/app.h
-    src/common.h
-    src/config.h
-    src/main.cpp
-    src/utils.h
-
-    src/ui/renderer.cpp
-    src/ui/renderer.h
-
-    src/logic/gates.h
-    src/logic/logic_sim.cpp
-    src/logic/logic_sim.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/application.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/application.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/pch.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/types.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
+
+target_precompile_headers(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/pch.h)
 
 target_link_libraries(${PROJECT_NAME} fmt::fmt spdlog SDL2::SDL2-static imgui stb nlohmann_json)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
 target_include_directories(${PROJECT_NAME}
     PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/ext
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/logic
         ${CMAKE_CURRENT_SOURCE_DIR}/src/ui

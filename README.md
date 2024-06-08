@@ -1,4 +1,5 @@
 # 🤖 nandy2024
+
 NAND-level circuit simulation
 
 ## Introduction
@@ -49,12 +50,17 @@ This is a continuation of my [first attempt at a NAND simulator](https://github.
 ## Controls
 
 - Drag n' Drop component from the left panel onto the canvas with L.Mouse.
+- Zoom in and out with the mouse wheel, or 'CTRL++'/'CTRL+-'.
 - Move around on canvas by dragging Shift+L.Mouse.
 - Make selections of components by dragging L.Mouse.
 - Connect nodes by dragging L.Mouse between them.
-- Connect nodes in a selection by pressing C with an active selection.
-- Move components with L.Mouse.
-- Press R with components selected or with a component under your mouse to rotate it 90 degrees.
+- Connect nodes in a selection by pressing 'C' with an active selection.
+- Move components with L.Mouse dragging.
+- Move selections of components with L.Mouse dragging.
+- Press 'R' with a component or selection of components under your mouse to rotate them 90 degrees.
+- Undo with 'CTRL+Z'.
+- Redo with 'CTRL+Y'.
+- Quit with 'ESC'.
 
 ## Components
 
@@ -66,7 +72,7 @@ Chapter 1
     NAND
     NODE (Unofficial)
     CLK (Unofficial)
-    LABEL (Unofficial)
+    NOTE (Unofficial)
     NOT
     AND
     OR
@@ -92,27 +98,27 @@ Chapter 2
     FULLALU
 
 Chapter 3
-     DFF
-     BIT
-     REGISTER
-     RAM8
-     RAM64
-     RAM512
-     RAM4K
-     RAM16K
-     PC
+    DFF
+    BIT
+    REGISTER
+    RAM8
+    RAM64
+    RAM512
+    RAM4K
+    RAM16K
+    PC
 
 Chapter 5
-     MEMORY
-     CPU
-     COMPUTER
+    MEMORY
+    CPU
+    COMPUTER
 
 Other
-     AREGISTER
-     DREGISTER
-     KEYBOARD
-     SCREEN
-     ROM32K
+    AREGISTER
+    DREGISTER
+    KEYBOARD
+    SCREEN
+    ROM32K
 ```
 
 ## Build
@@ -148,6 +154,10 @@ cmake --build build -j16
 
 // TODO
 
+### OSX
+
+// TODO
+
 ### WebAssembly (Emscripten)
 
 // TODO: Deploy and host in GitHub Pages
@@ -159,6 +169,14 @@ cmake --build build -j16
 ## Testing & Correctness
 
 // TODO
+
+If possible, `Circuit` could be entirely constexpr, so the unit tests could run at compile time.
+
+## Support
+
+- ko-fi
+- PayPal
+- Patreon?
 
 ## License
 
