@@ -11,7 +11,7 @@
 #include <SDL.h>
 #include <imgui.h>
 
-class WindowRenderer
+class WindowRenderer final
 {
 public:
     WindowRenderer(std::string const& title, Size const& size);

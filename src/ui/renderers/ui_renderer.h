@@ -8,7 +8,21 @@
 
 #include "applog_sink.h"
 
-class UIRenderer
+#include "ui/actions/action.h"
+#include "ui/actions/canvas_component_hovered_action.h"
+#include "ui/actions/ui_canvas_hovered_action.h"
+#include "ui/actions/ui_close_requested_action.h"
+#include "ui/actions/ui_drag_drop_action.h"
+#include "ui/actions/ui_keypress_action.h"
+#include "ui/actions/ui_mouse_down_action.h"
+#include "ui/actions/ui_mouse_moved_action.h"
+#include "ui/actions/ui_mouse_up_action.h"
+#include "ui/actions/ui_mouse_wheel_action.h"
+#include "ui/actions/ui_sim_control_action.h"
+
+#include <vector>
+
+class UIRenderer final
 {
 public:
     UIRenderer(WindowRenderer* windowRenderer);
@@ -16,11 +30,16 @@ public:
 
     void handleEvent(SDL_Event const& event);
     void clear();
-    void draw();
+    auto draw() -> std::vector<std::unique_ptr<Action>>;
     void present();
 
 private:
     WindowRenderer* m_WindowRenderer;
+
+    // State
+    bool m_IsHoveringCanvas = false;
+    bool m_IsMouseDown      = false;
+    f32  m_MouseWheel       = 0.0f;
 };
 
 inline UIRenderer::UIRenderer(WindowRenderer* windowRenderer)
@@ -65,11 +84,52 @@ inline void UIRenderer::clear()
     ImGui::NewFrame();
 }
 
-inline void UIRenderer::draw()
+inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
 {
-    auto& io         = ImGui::GetIO();
-    auto  mousePos   = ImGui::GetMousePos();
-    auto  mouseDelta = io.MouseDelta;
+    std::vector<std::unique_ptr<Action>> actions;
+
+    auto& io            = ImGui::GetIO();
+    io.WantCaptureMouse = true;
+
+    const auto mousePos      = ImGui::GetMousePos();
+    const auto mouseDelta    = io.MouseDelta;
+    const bool validPosition = mousePos.x >= 0 && mousePos.y >= 0 && mousePos.x < Config::kScreenWidth && mousePos.y < Config::kScreenHeight;
+    const bool hasMoved      = mouseDelta.x != 0 || mouseDelta.y != 0;
+
+    if (validPosition && hasMoved)
+    {
+        actions.push_back(std::make_unique<UIMouseMovedAction>(mousePos.x, mousePos.y, mouseDelta.x, mouseDelta.y));
+    }
+
+    const bool isMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    if (m_IsMouseDown && !isMouseDown)
+    {
+        m_IsMouseDown = false;
+        actions.push_back(std::make_unique<UIMouseUpAction>());
+    }
+    else if (!m_IsMouseDown && isMouseDown)
+    {
+        m_IsMouseDown = true;
+        actions.push_back(std::make_unique<UIMouseDownAction>());
+    }
+
+    if (io.MouseWheel != 0.0f)
+    {
+        actions.push_back(std::make_unique<UIMouseWheelAction>(io.MouseWheel));
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+    {
+        actions.push_back(std::make_unique<UICloseRequestedAction>());
+    }
+    else if (ImGui::IsKeyPressed(ImGuiKey_R))
+    {
+        actions.push_back(std::make_unique<UIKeypressAction>('R'));
+    }
+    else if (ImGui::IsKeyPressed(ImGuiKey_C))
+    {
+        actions.push_back(std::make_unique<UIKeypressAction>('C'));
+    }
 
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(Config::kScreenWidth, Config::kScreenHeight));
@@ -82,7 +142,7 @@ inline void UIRenderer::draw()
             {
                 if (ImGui::MenuItem("Close", "Ctrl+W"))
                 {
-                    spdlog::info("Close menu item pressed");
+                    actions.push_back(std::make_unique<UICloseRequestedAction>());
                 }
                 ImGui::EndMenu();
             }
@@ -96,67 +156,27 @@ inline void UIRenderer::draw()
 
             ImGui::Separator();
 
-            ImGui::Button("NAND", ImVec2(50, 50));
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_AcceptNoDrawDefaultRect))
+            const auto defineDragNDropButtonFn = [&](const char* label, const char* payload)
             {
-                // m_UIState = UIState::UIDragging;
-                ImGui::SetDragDropPayload("NAND", "NAND", sizeof("NAND"));
+                ImGui::Button(label, ImVec2(50, 50));
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_AcceptNoDrawDefaultRect))
+                {
+                    ImGui::SetDragDropPayload(payload, payload, sizeof(payload));
 
-                // Preview tooltip
-                ImGui::Text("Drag and drop me!");
+                    // Preview tooltip
+                    ImGui::Text("Drag and drop me!");
 
-                ImGui::EndDragDropSource();
-            }
+                    ImGui::EndDragDropSource();
+                }
+            };
 
-            ImGui::SameLine();
-
-            ImGui::Button("Node", ImVec2(50, 50));
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_AcceptNoDrawDefaultRect))
-            {
-                // m_UIState = UIState::UIDragging;
-                ImGui::SetDragDropPayload("NODE", "NODE", sizeof("NODE"));
-
-                // Preview tooltip
-                ImGui::Text("Drag and drop me!");
-
-                ImGui::EndDragDropSource();
-            }
-
+            defineDragNDropButtonFn("NAND", "NAND");
             // Break
-
-            ImGui::Button("CLK", ImVec2(50, 50));
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_AcceptNoDrawDefaultRect))
-            {
-                // m_UIState = UIState::UIDragging;
-                ImGui::SetDragDropPayload("CLK", "CLK", sizeof("CLK"));
-
-                // Preview tooltip
-                ImGui::Text("Drag and drop me!");
-
-                ImGui::EndDragDropSource();
-            }
-
+            defineDragNDropButtonFn("Node", "NODE");
+            // Break
+            defineDragNDropButtonFn("CLK", "CLK");
             // Break
             ImGui::Separator();
-
-            ImGui::Text("User Components");
-
-            // Break
-            ImGui::Separator();
-
-            ImGui::Text("Non-functional Components");
-
-            ImGui::Button("Text", ImVec2(50, 50));
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_AcceptNoDrawDefaultRect))
-            {
-                // m_UIState = UIState::UIDragging;
-                ImGui::SetDragDropPayload("TEXT", "TEXT", sizeof("TEXT"));
-
-                // Preview tooltip
-                ImGui::Text("Drag and drop me!");
-
-                ImGui::EndDragDropSource();
-            }
 
             ImGui::EndChild();
         }
@@ -169,51 +189,37 @@ inline void UIRenderer::draw()
             {
                 ImGui::BeginChild("ButtonsPane", ImVec2(Config::kCanvasWidth - 15, 40), ImGuiChildFlags_Border);
                 {
-                    /*
                     if (ImGui::Button("Step"))
                     {
-                        spdlog::info("Step button pressed");
-                        if (!logicSim.running())
-                        {
-                            logicSim.step();
-                        }
+                        actions.push_back(std::make_unique<UISimControlAction>(SimControl::Step));
                     }
                     ImGui::SameLine();
 
-                    if (!logicSim.running())
+                    if (ImGui::Button("Run"))
                     {
-                        if (ImGui::Button("Run"))
-                        {
-                            spdlog::info("Run button pressed");
-                            logicSim.run();
-                        }
+                        actions.push_back(std::make_unique<UISimControlAction>(SimControl::Run));
                     }
-                    else
+                    ImGui::SameLine();
+
+                    if (ImGui::Button("Stop"))
                     {
-                        if (ImGui::Button("Stop"))
-                        {
-                            spdlog::info("Stop button pressed");
-                            // logicSim.stop();
-                        }
+                        actions.push_back(std::make_unique<UISimControlAction>(SimControl::Stop));
                     }
                     ImGui::SameLine();
 
                     if (ImGui::Button("Zoom +"))
                     {
-                        spdlog::info("Zoom + button pressed: {}", m_Zoom);
-                        m_Zoom += 0.1f;
-                        m_Zoom = std::clamp(m_Zoom, 0.025f, 3.0f);
+                        actions.push_back(std::make_unique<UIMouseWheelAction>(1.0f));
                     }
                     ImGui::SameLine();
 
                     if (ImGui::Button("Zoom -"))
                     {
-                        spdlog::info("Zoom - button pressed: {}", m_Zoom);
-                        m_Zoom -= 0.1f;
-                        m_Zoom = std::clamp(m_Zoom, 0.025f, 3.0f);
+                        actions.push_back(std::make_unique<UIMouseWheelAction>(-1.0f));
                     }
                     ImGui::SameLine();
 
+                    /*
                     if (ImGui::Button("<"))
                     {
                         spdlog::info("< button pressed");
@@ -272,50 +278,30 @@ inline void UIRenderer::draw()
 
                 // Canvas Image w/ drag and drop
                 // 0,0 is top left corner of the window
-                // m_CursorX = 0.0f;
-                // m_CursorY = 0.0f;
                 ImGui::Image(m_WindowRenderer->sdlCanvasTexture(), ImVec2(Config::kCanvasWidth, Config::kCanvasHeight));
-                /*
                 {
-                    auto rect         = ImGui::GetItemRectMin();
-                    m_IsCanvasHovered = ImGui::IsItemHovered();
-                    if (m_IsCanvasHovered)
+                    bool isHoveringCanvas = ImGui::IsItemHovered();
+                    if (!m_IsHoveringCanvas && isHoveringCanvas)
                     {
-                        // Start building viewmodel information
-                        m_CursorX = ImGui::GetMousePos().x - ImGui::GetCursorScreenPos().x - ImGui::GetScrollX();
-                        m_CursorY = Config::kCanvasHeight + ImGui::GetMousePos().y - ImGui::GetCursorScreenPos().y - ImGui::GetScrollY();
-                        m_Zoom    = std::clamp(m_Zoom - io.MouseWheel * 0.1f, 0.025f, 3.0f);
+                        m_IsHoveringCanvas = isHoveringCanvas;
+                        actions.push_back(std::make_unique<UICanvasHoveredAction>());
                     }
+                    else if (m_IsHoveringCanvas && !isHoveringCanvas)
+                    {
+                        m_IsHoveringCanvas = false;
+                    }
+
                     if (ImGui::BeginDragDropTarget())
                     {
                         // This is the only UI -> Canvas interaction!
-                        auto x = (m_CursorX - m_OffsetX) / m_Zoom - 50.0f; // TODO: Handle this offset more gracefully
-                        auto y = (m_CursorY - m_OffsetY) / m_Zoom - 50.0f; // TODO: Handle this offset more gracefully
-                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("NAND"))
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(nullptr))
                         {
-                            logicSim.addGate(x, y);
-                            m_UIState = UIState::None;
-                        }
-                        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("NODE"))
-                        {
-                            logicSim.addNode(x + 50.0f, y + 50.0f); // TODO
-                            m_UIState = UIState::None;
-                        }
-                        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CLK"))
-                        {
-                            logicSim.addClockNode(x + 50.0f, y + 50.0f); // TODO
-                            m_UIState = UIState::None;
-                        }
-                        else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXT"))
-                        {
-                            // logicSim.addTextNote(x + 50.0f, y + 50.0f);
-                            m_UIState = UIState::None;
+                            actions.push_back(std::make_unique<UIDragDropAction>(mousePos.x, mousePos.y, (const char*)payload->Data));
                         }
 
                         ImGui::EndDragDropTarget();
                     }
                 }
-                */
                 ImGui::EndChild(); // "CanvasPane"
             }
 
@@ -332,63 +318,7 @@ inline void UIRenderer::draw()
         ImGui::SameLine();
         ImGui::BeginChild("Right", ImVec2(0, 0), ImGuiChildFlags_Border);
         {
-            /*
-            ImGui::Text("%s", fmt::format("Components count: {}", logicSim.components.size()).c_str());
-            ImGui::Text("%s", fmt::format("Gates count: {}", logicSim.gates.size()).c_str());
-            ImGui::Text("%s", fmt::format("Nodes count: {}", logicSim.nodes.size()).c_str());
-            ImGui::Text("%s", fmt::format("Step count: {}", logicSim.stepCount()).c_str());
-
-            auto ns = logicSim.stepTime();
-            if (ns > 1000000)
-            {
-                ImGui::Text("%s", fmt::format("Step time: {:.2f}ms", ns / 1000000.0f).c_str());
-            }
-            else if (ns > 1000)
-            {
-                ImGui::Text("%s", fmt::format("Step time: {:.2f}us", ns / 1000.0f).c_str());
-            }
-            else
-            {
-                ImGui::Text("%s", fmt::format("Step time: {:.2f}ns", ns).c_str());
-            }
-
-            auto Hz = 1000000000.0f / logicSim.stepTime(); // From nano to Hz
-            if (Hz > 1000000.0f)
-            {
-                ImGui::Text("%s", fmt::format("Hz: {:.2f}MHz", Hz / 1000000.0f).c_str());
-            }
-            else if (Hz > 1000.0f)
-            {
-                ImGui::Text("%s", fmt::format("Hz: {:.2f}kHz", Hz / 1000.0f).c_str());
-            }
-            else
-            {
-                ImGui::Text("%s", fmt::format("Hz: {:.2f}Hz", Hz).c_str());
-            }
-
-            ImGui::Text("%s", fmt::format("Ops total: {}", logicSim.opsTotalCount()).c_str());
-            ImGui::Text("%s", fmt::format("Ops per step: {}", logicSim.opsPerStep()).c_str());
-
-            ImGui::Separator();
-
-            ImGui::Text("%s", fmt::format("Mouse pos: {}, {}", mousePos.x, mousePos.y).c_str());
-            ImGui::Text("%s", fmt::format("Mouse delta: {}, {}", mouseDelta.x, mouseDelta.y).c_str());
-            if (m_CursorX == 0.0f && m_CursorY == 0.0f)
-            {
-                ImGui::Text("Canvas pos: None");
-            }
-            else
-            {
-                ImGui::Text("%s", fmt::format("Canvas pos: {}, {}", m_CursorX, m_CursorY).c_str());
-            }
-
-            ImGui::Separator();
-
-            ImGui::Text("%s", fmt::format("UI State: {}", UIStateToString(m_UIState)).c_str());
-
-            ImGui::Separator();
-            */
-
+            // TODO: Draw stats & tables for components, gates, nodes, selection, etc.
             ImGui::EndChild();
         }
 
@@ -397,6 +327,8 @@ inline void UIRenderer::draw()
 
     ImGui::Render();
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+
+    return actions;
 }
 
 inline void UIRenderer::present()

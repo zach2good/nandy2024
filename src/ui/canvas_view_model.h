@@ -5,23 +5,28 @@
 
 #include <memory>
 
-class CanvasViewModel
+class CanvasViewModel final
 {
 public:
     static std::unique_ptr<CanvasViewModel> create(Circuit& circuit);
 
     void draw(WindowRenderer* renderer);
 
+    struct NANDViewModel
+    {
+        u64      id;
+        Position position;
+        Size     size;
+        Facing   facing;
+
+        // TODO: Input/output states
+        // TODO: Connections: maybe do through wires?
+    };
+
+    std::vector<NANDViewModel> m_NANDs;
+
 private:
     CanvasViewModel(Circuit& circuit);
-
-    // TODO: Don't use ComponentId, or anything that needs logicSim.
-    //     : These should be self-contained primitives. Once created,
-    //     : CanvasViewModel should not need to interact with LogicSim
-    //     : in order to render.
-    // std::vector<ComponentId> m_VisibleComponentIds;
-    // std::vector<ComponentId> m_SelectedComponentIds;
-    // ComponentId              m_HoveredComponentId;
 };
 
 inline std::unique_ptr<CanvasViewModel> CanvasViewModel::create(Circuit& circuit)
@@ -29,22 +34,28 @@ inline std::unique_ptr<CanvasViewModel> CanvasViewModel::create(Circuit& circuit
     return std::move(std::unique_ptr<CanvasViewModel>(new CanvasViewModel(circuit)));
 }
 
+// TODO: Drawing and creation should be seperate?
 inline void CanvasViewModel::draw(WindowRenderer* renderer)
 {
-    renderer->setColour(Colour::Yellow);
-    renderer->drawNAND({ 100, 100 }, { 100, 100 }, Facing::Right);
+    for (auto& nand : m_NANDs)
+    {
+        renderer->setColour(Colour::White);
+        renderer->drawNAND(nand.position, nand.size, nand.facing);
+    }
 
-    renderer->setColour(Colour::Magenta);
-    renderer->drawNAND({ 100, 200 }, { 100, 100 }, Facing::Left);
+    // TODO: Nodes
 
-    renderer->setColour(Colour::Cyan);
-    renderer->drawNAND({ 200, 100 }, { 100, 100 }, Facing::Up);
+    // TODO: Wires
 
-    renderer->setColour(Colour::LightGrey);
-    renderer->drawNAND({ 200, 200 }, { 100, 100 }, Facing::Down);
+    // TODO: Selection box
+
+    // TODO: Labels/Notes
 }
 
+// TODO: Drawing and creation should be seperate?
 inline CanvasViewModel::CanvasViewModel(Circuit& circuit)
 {
-    // TODO: Make viewmodel from circuit
+    // TODO: This is faked for now while I work on the UI
+    m_NANDs.push_back({ 1, { 100, 100 }, { 100, 100 }, Facing::Right });
+    m_NANDs.push_back({ 2, { 250, 100 }, { 100, 100 }, Facing::Right });
 }
