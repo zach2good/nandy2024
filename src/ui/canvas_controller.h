@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui/actions/action.h"
+#include "ui/events/event.h"
 
 #include <memory>
 
@@ -10,7 +10,7 @@ public:
     CanvasController();
     ~CanvasController();
 
-    void handleCanvasAction(std::unique_ptr<Action> action);
+    void handleCanvasEvent(std::unique_ptr<Event> event);
 };
 
 inline CanvasController::CanvasController()
@@ -21,7 +21,7 @@ inline CanvasController::~CanvasController()
 {
 }
 
-inline void CanvasController::handleCanvasAction(std::unique_ptr<Action> action)
+inline void CanvasController::handleCanvasEvent(std::unique_ptr<Event> event)
 {
-    spdlog::info("Handling canvas action: {}", action->getName());
+    spdlog::info("CanvasController::handleCanvasEvent: event={}", event->getName());
 }

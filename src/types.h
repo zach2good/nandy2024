@@ -30,6 +30,12 @@ struct Position
     f64 y;
 };
 
+struct Delta
+{
+    f64 dx;
+    f64 dy;
+};
+
 struct Size
 {
     f64 width;

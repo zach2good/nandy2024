@@ -82,22 +82,17 @@ void Application::render()
     auto actions = m_UIRenderer->draw();
     m_WindowRenderer->draw();
 
-    // Events from the UI
     for (auto& action : actions)
     {
-        spdlog::info("Action: {}", action->getName());
         if (auto closeAction = dynamic_cast<UICloseRequestedAction*>(&*action))
         {
             m_CloseRequested = true;
         }
-
-        // TODO: Handle these actions somewhere else?
     }
 
-    // Events from the canvas
-    for (auto& action : m_UIInputHandler->handleInput(&*m_CanvasViewModel))
+    for (auto& event : m_UIInputHandler->handleInput(&*m_CanvasViewModel, std::move(actions)))
     {
-        m_CanvasController->handleCanvasAction(std::move(action));
+        m_CanvasController->handleCanvasEvent(std::move(event));
     }
 
     m_UIRenderer->present();

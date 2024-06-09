@@ -9,7 +9,6 @@
 #include "applog_sink.h"
 
 #include "ui/actions/action.h"
-#include "ui/actions/canvas_component_hovered_action.h"
 #include "ui/actions/ui_canvas_hovered_action.h"
 #include "ui/actions/ui_close_requested_action.h"
 #include "ui/actions/ui_drag_drop_action.h"
@@ -95,41 +94,6 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
     const auto mouseDelta    = io.MouseDelta;
     const bool validPosition = mousePos.x >= 0 && mousePos.y >= 0 && mousePos.x < Config::kScreenWidth && mousePos.y < Config::kScreenHeight;
     const bool hasMoved      = mouseDelta.x != 0 || mouseDelta.y != 0;
-
-    if (validPosition && hasMoved)
-    {
-        actions.push_back(std::make_unique<UIMouseMovedAction>(mousePos.x, mousePos.y, mouseDelta.x, mouseDelta.y));
-    }
-
-    const bool isMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
-    if (m_IsMouseDown && !isMouseDown)
-    {
-        m_IsMouseDown = false;
-        actions.push_back(std::make_unique<UIMouseUpAction>());
-    }
-    else if (!m_IsMouseDown && isMouseDown)
-    {
-        m_IsMouseDown = true;
-        actions.push_back(std::make_unique<UIMouseDownAction>());
-    }
-
-    if (io.MouseWheel != 0.0f)
-    {
-        actions.push_back(std::make_unique<UIMouseWheelAction>(io.MouseWheel));
-    }
-
-    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
-    {
-        actions.push_back(std::make_unique<UICloseRequestedAction>());
-    }
-    else if (ImGui::IsKeyPressed(ImGuiKey_R))
-    {
-        actions.push_back(std::make_unique<UIKeypressAction>('R'));
-    }
-    else if (ImGui::IsKeyPressed(ImGuiKey_C))
-    {
-        actions.push_back(std::make_unique<UIKeypressAction>('C'));
-    }
 
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(Config::kScreenWidth, Config::kScreenHeight));
@@ -283,12 +247,14 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
                     bool isHoveringCanvas = ImGui::IsItemHovered();
                     if (!m_IsHoveringCanvas && isHoveringCanvas)
                     {
-                        m_IsHoveringCanvas = isHoveringCanvas;
+                        m_IsHoveringCanvas = true;
                         actions.push_back(std::make_unique<UICanvasHoveredAction>());
                     }
                     else if (m_IsHoveringCanvas && !isHoveringCanvas)
                     {
                         m_IsHoveringCanvas = false;
+                        m_IsMouseDown      = false;
+                        actions.push_back(std::make_unique<UICanvasHoveredAction>());
                     }
 
                     if (ImGui::BeginDragDropTarget())
@@ -327,6 +293,44 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
 
     ImGui::Render();
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+
+    if (m_IsHoveringCanvas)
+    {
+        if (validPosition && hasMoved)
+        {
+            actions.push_back(std::make_unique<UIMouseMovedAction>(mousePos.x, mousePos.y, mouseDelta.x, mouseDelta.y));
+        }
+
+        const bool isMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        if (m_IsMouseDown && !isMouseDown)
+        {
+            m_IsMouseDown = false;
+            actions.push_back(std::make_unique<UIMouseUpAction>());
+        }
+        else if (!m_IsMouseDown && isMouseDown)
+        {
+            m_IsMouseDown = true;
+            actions.push_back(std::make_unique<UIMouseDownAction>());
+        }
+
+        if (io.MouseWheel != 0.0f)
+        {
+            actions.push_back(std::make_unique<UIMouseWheelAction>(io.MouseWheel));
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+        {
+            actions.push_back(std::make_unique<UICloseRequestedAction>());
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_R))
+        {
+            actions.push_back(std::make_unique<UIKeypressAction>('R'));
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_C))
+        {
+            actions.push_back(std::make_unique<UIKeypressAction>('C'));
+        }
+    }
 
     return actions;
 }
