@@ -332,6 +332,8 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
         }
     }
 
+    // TODO: Handle the mouse exiting the canvas during a drag - emitting a mouse-up action
+
     return actions;
 }
 

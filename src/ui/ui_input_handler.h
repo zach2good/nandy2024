@@ -9,6 +9,7 @@
 
 #include "ui/events/event.h"
 #include "ui/events/ui_drag_ended_event.h"
+#include "ui/events/ui_drag_started_event.h"
 #include "ui/events/ui_drag_update_event.h"
 #include "ui/events/ui_mouse_click_event.h"
 
@@ -25,6 +26,7 @@ private:
     Position m_CursorDelta;
 
     bool     m_IsDragging = false;
+    bool     m_HasDragged = false;
     Position m_DragStart;
     Position m_DragEnd;
 };
@@ -44,23 +46,30 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
     for (auto& action : actions)
     {
         // TODO: Do the type lookup without using the name, lol!
-        if (action->getName() == "UIMouseMovedAction")
-        {
-            auto moveAction  = static_cast<UIMouseMovedAction*>(action.get());
-            m_CursorPosition = Position(moveAction->x, moveAction->y);
-            m_CursorDelta    = Position(moveAction->dx, moveAction->dy);
-
-            if (m_IsDragging)
-            {
-                events.emplace_back(std::make_unique<UIDragUpdateEvent>());
-            }
-        }
 
         if (action->getName() == "UIMouseDownAction" && !m_IsDragging)
         {
             auto dragAction = static_cast<UIMouseDownAction*>(action.get());
             m_IsDragging    = true;
             m_DragStart     = m_CursorPosition;
+        }
+
+        if (action->getName() == "UIMouseMovedAction")
+        {
+            auto moveAction  = static_cast<UIMouseMovedAction*>(action.get());
+            m_CursorPosition = Position(moveAction->x, moveAction->y);
+            m_CursorDelta    = Position(moveAction->dx, moveAction->dy);
+
+            if (!m_HasDragged)
+            {
+                events.emplace_back(std::make_unique<UIDragStartedEvent>());
+                m_HasDragged = true;
+            }
+
+            if (m_IsDragging)
+            {
+                events.emplace_back(std::make_unique<UIDragUpdateEvent>());
+            }
         }
 
         if (action->getName() == "UIMouseUpAction" && m_IsDragging)
@@ -76,6 +85,7 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
             }
 
             m_IsDragging = false;
+            m_HasDragged = false;
         }
 
         if (action->getName() == "UICanvasHoveredAction")
