@@ -12,9 +12,15 @@ struct UIMouseMovedAction final : public Action
 
     auto getName() const -> std::string override
     {
-        return fmt::format("UIMouseMovedAction");
+        return "UIMouseMovedAction";
     }
 
+    auto toString() const -> std::string override
+    {
+        return fmt::format("UIMouseMovedAction: x={}, y={}, dx={}, dy={}", x, y, dx, dy);
+    }
+
+    // private:
     f32 x;
     f32 y;
     f32 dx;

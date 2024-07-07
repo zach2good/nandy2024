@@ -12,6 +12,11 @@ struct UICloseRequestedAction final : public Action
     {
         return "UICloseRequestedAction";
     }
+
+    auto toString() const -> std::string override
+    {
+        return "UICloseRequestedAction";
+    }
 };
 
 inline UICloseRequestedAction::UICloseRequestedAction()

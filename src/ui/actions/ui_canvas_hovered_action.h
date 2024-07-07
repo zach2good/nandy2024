@@ -12,6 +12,11 @@ struct UICanvasHoveredAction final : public Action
     {
         return "UICanvasHoveredAction";
     }
+
+    auto toString() const -> std::string override
+    {
+        return "UICanvasHoveredAction";
+    }
 };
 
 inline UICanvasHoveredAction::UICanvasHoveredAction()

@@ -12,6 +12,11 @@ struct UIMouseWheelAction final : public Action
 
     auto getName() const -> std::string override
     {
+        return "UIMouseWheelAction";
+    }
+
+    auto toString() const -> std::string override
+    {
         return fmt::format("UIMouseWheelAction: val={}", val);
     }
 

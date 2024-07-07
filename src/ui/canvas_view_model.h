@@ -12,7 +12,7 @@ public:
 
     void draw(WindowRenderer* renderer);
 
-    struct NANDViewModel
+    struct NANDViewModel final
     {
         u64      id;
         Position position;
@@ -21,9 +21,30 @@ public:
 
         // TODO: Input/output states
         // TODO: Connections: maybe do through wires?
+
+        auto toString() const -> std::string
+        {
+            return fmt::format("NANDViewModel: id={}, position={}, size={}, facing={}", id, ::toString(position), ::toString(size), ::toString(facing));
+        }
+    };
+
+    struct NodeViewModel final
+    {
+        u64      id;
+        Position position;
+        Size     size;
+    };
+
+    struct WireViewModel final
+    {
+        u64      id;
+        Position start;
+        Position end;
     };
 
     std::vector<NANDViewModel> m_NANDs;
+    std::vector<NodeViewModel> m_Nodes;
+    std::vector<WireViewModel> m_Wires;
 
 private:
     CanvasViewModel(Circuit& circuit);
@@ -43,11 +64,21 @@ inline void CanvasViewModel::draw(WindowRenderer* renderer)
         renderer->drawNAND(nand.position, nand.size, nand.facing);
     }
 
-    // TODO: Nodes
+    for (auto& node : m_Nodes)
+    {
+        renderer->setColour(Colour::White);
+        renderer->drawRectangle(node.position, node.size);
+    }
 
-    // TODO: Wires
+    for (auto& wire : m_Wires)
+    {
+        renderer->setColour(Colour::White);
+        renderer->drawLine(wire.start, wire.end);
+    }
 
     // TODO: Selection box
+    // renderer->setColour(Colour::White);
+    // renderer->drawRectangle(node.position, node.size);
 
     // TODO: Labels/Notes
 }
@@ -58,4 +89,6 @@ inline CanvasViewModel::CanvasViewModel(Circuit& circuit)
     // TODO: This is faked for now while I work on the UI
     m_NANDs.push_back({ 1, { 100, 100 }, { 100, 100 }, Facing::Right });
     m_NANDs.push_back({ 2, { 250, 100 }, { 100, 100 }, Facing::Right });
+
+    m_Wires.push_back({ 1, { 350, 350 }, { 450, 450 } });
 }

@@ -95,6 +95,9 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
     const bool validPosition = mousePos.x >= 0 && mousePos.y >= 0 && mousePos.x < Config::kScreenWidth && mousePos.y < Config::kScreenHeight;
     const bool hasMoved      = mouseDelta.x != 0 || mouseDelta.y != 0;
 
+    f32 canvasX = 0.0f;
+    f32 canvasY = 0.0f;
+
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(Config::kScreenWidth, Config::kScreenHeight));
     ImGui::Begin("MainWindow", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_MenuBar);
@@ -243,6 +246,8 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
                 // Canvas Image w/ drag and drop
                 // 0,0 is top left corner of the window
                 ImGui::Image(m_WindowRenderer->sdlCanvasTexture(), ImVec2(Config::kCanvasWidth, Config::kCanvasHeight));
+                canvasX = ImGui::GetMousePos().x - ImGui::GetCursorScreenPos().x - ImGui::GetScrollX();
+                canvasY = Config::kCanvasHeight + ImGui::GetMousePos().y - ImGui::GetCursorScreenPos().y - ImGui::GetScrollY();
                 {
                     bool isHoveringCanvas = ImGui::IsItemHovered();
                     if (!m_IsHoveringCanvas && isHoveringCanvas)
@@ -262,7 +267,7 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
                         // This is the only UI -> Canvas interaction!
                         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(nullptr))
                         {
-                            actions.push_back(std::make_unique<UIDragDropAction>(mousePos.x, mousePos.y, (const char*)payload->Data));
+                            actions.push_back(std::make_unique<UIDragDropAction>(canvasX, canvasY, (const char*)payload->Data));
                         }
 
                         ImGui::EndDragDropTarget();
@@ -294,11 +299,12 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
     ImGui::Render();
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
 
+    // Emit stateful canvas actions
     if (m_IsHoveringCanvas)
     {
         if (validPosition && hasMoved)
         {
-            actions.push_back(std::make_unique<UIMouseMovedAction>(mousePos.x, mousePos.y, mouseDelta.x, mouseDelta.y));
+            actions.push_back(std::make_unique<UIMouseMovedAction>(canvasX, canvasY, mouseDelta.x, mouseDelta.y));
         }
 
         const bool isMouseDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
@@ -313,20 +319,24 @@ inline auto UIRenderer::draw() -> std::vector<std::unique_ptr<Action>>
             actions.push_back(std::make_unique<UIMouseDownAction>());
         }
 
+        // TODO: Why isn't this working?
         if (io.MouseWheel != 0.0f)
         {
             actions.push_back(std::make_unique<UIMouseWheelAction>(io.MouseWheel));
         }
 
+        // TODO: After interacting with the Canvas this doesn't work reliably
         if (ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
             actions.push_back(std::make_unique<UICloseRequestedAction>());
         }
-        else if (ImGui::IsKeyPressed(ImGuiKey_R))
+
+        if (ImGui::IsKeyPressed(ImGuiKey_R))
         {
             actions.push_back(std::make_unique<UIKeypressAction>('R'));
         }
-        else if (ImGui::IsKeyPressed(ImGuiKey_C))
+
+        if (ImGui::IsKeyPressed(ImGuiKey_C))
         {
             actions.push_back(std::make_unique<UIKeypressAction>('C'));
         }

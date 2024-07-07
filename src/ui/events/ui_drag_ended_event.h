@@ -15,6 +15,11 @@ struct UIDragEndedEvent final : public Event
         return "UIDragEndedEvent";
     }
 
+    auto toString() const -> std::string override
+    {
+        return fmt::format("UIDragEndedEvent");
+    }
+
 private:
 };
 

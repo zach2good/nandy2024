@@ -23,5 +23,5 @@ inline CanvasController::~CanvasController()
 
 inline void CanvasController::handleCanvasEvent(std::unique_ptr<Event> event)
 {
-    spdlog::info("CanvasController::handleCanvasEvent: event={}", event->getName());
+    spdlog::info("CanvasController::handleCanvasEvent: event={}", event->toString());
 }

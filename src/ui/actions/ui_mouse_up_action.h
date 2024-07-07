@@ -12,6 +12,11 @@ struct UIMouseUpAction final : public Action
     {
         return "UIMouseUpAction";
     }
+
+    auto toString() const -> std::string override
+    {
+        return fmt::format("UIMouseUpAction");
+    }
 };
 
 inline UIMouseUpAction::UIMouseUpAction()

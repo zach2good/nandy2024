@@ -15,6 +15,11 @@ struct UIMouseClickEvent final : public Event
         return "UIMouseClickEvent";
     }
 
+    auto toString() const -> std::string override
+    {
+        return fmt::format("UIMouseClickEvent");
+    }
+
 private:
 };
 

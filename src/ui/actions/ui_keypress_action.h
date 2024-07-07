@@ -12,6 +12,11 @@ struct UIKeypressAction final : public Action
 
     auto getName() const -> std::string override
     {
+        return "UIKeypressAction";
+    }
+
+    auto toString() const -> std::string override
+    {
         return fmt::format("UIKeypressAction: val={}", val);
     }
 

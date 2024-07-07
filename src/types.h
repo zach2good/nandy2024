@@ -24,23 +24,38 @@ typedef double         f64;
 typedef std::size_t    usize;
 typedef std::ptrdiff_t isize;
 
-struct Position
+struct Position final
 {
     f64 x;
     f64 y;
 };
 
-struct Delta
+inline auto toString(const Position& position) -> std::string
+{
+    return fmt::format("Position: x={}, y={}", position.x, position.y);
+}
+
+struct Delta final
 {
     f64 dx;
     f64 dy;
 };
 
-struct Size
+inline auto toString(const Delta& delta) -> std::string
+{
+    return fmt::format("Delta: dx={}, dy={}", delta.dx, delta.dy);
+}
+
+struct Size final
 {
     f64 width;
     f64 height;
 };
+
+inline auto toString(const Size& size) -> std::string
+{
+    return fmt::format("Size: width={}, height={}", size.width, size.height);
+}
 
 enum class Colour
 {
@@ -57,6 +72,37 @@ enum class Colour
     DarkGrey,
 };
 
+inline auto toString(Colour colour) -> std::string
+{
+    switch (colour)
+    {
+        case Colour::Red:
+            return "Red";
+        case Colour::Green:
+            return "Green";
+        case Colour::Blue:
+            return "Blue";
+        case Colour::Yellow:
+            return "Yellow";
+        case Colour::Cyan:
+            return "Cyan";
+        case Colour::Magenta:
+            return "Magenta";
+        case Colour::White:
+            return "White";
+        case Colour::Black:
+            return "Black";
+        case Colour::Grey:
+            return "Grey";
+        case Colour::LightGrey:
+            return "LightGrey";
+        case Colour::DarkGrey:
+            return "DarkGrey";
+    }
+
+    return "Unknown";
+}
+
 enum class Facing
 {
     Right,
@@ -64,6 +110,48 @@ enum class Facing
     Left,
     Up,
 };
+
+inline auto toString(Facing facing) -> std::string
+{
+    switch (facing)
+    {
+        case Facing::Right:
+            return "Right";
+        case Facing::Down:
+            return "Down";
+        case Facing::Left:
+            return "Left";
+        case Facing::Up:
+            return "Up";
+    }
+
+    return "Unknown";
+}
+
+enum class SimControl
+{
+    Step,
+    Run,
+    Stop,
+    Reset,
+};
+
+inline std::string toString(SimControl control)
+{
+    switch (control)
+    {
+        case SimControl::Step:
+            return "Step";
+        case SimControl::Run:
+            return "Run";
+        case SimControl::Stop:
+            return "Stop";
+        case SimControl::Reset:
+            return "Reset";
+        default:
+            return "Unknown";
+    }
+}
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;

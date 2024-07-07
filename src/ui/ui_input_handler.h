@@ -23,7 +23,7 @@ public:
 
 private:
     Position m_CursorPosition;
-    Position m_CursorDelta;
+    Delta    m_CursorDelta;
 
     bool     m_IsDragging = false;
     bool     m_HasDragged = false;
@@ -45,6 +45,8 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
 
     for (auto& action : actions)
     {
+        // spdlog::info("UIInputHandler::handleInput: action={}", action->getName());
+
         // TODO: Do the type lookup without using the name, lol!
 
         if (action->getName() == "UIMouseDownAction" && !m_IsDragging)
@@ -58,7 +60,7 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
         {
             auto moveAction  = static_cast<UIMouseMovedAction*>(action.get());
             m_CursorPosition = Position(moveAction->x, moveAction->y);
-            m_CursorDelta    = Position(moveAction->dx, moveAction->dy);
+            m_CursorDelta    = Delta(moveAction->dx, moveAction->dy);
 
             if (m_IsDragging)
             {
@@ -69,6 +71,22 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
                 }
 
                 events.emplace_back(std::make_unique<UIDragUpdateEvent>());
+            }
+
+            // If the mouse has moved, we have to check the visible components on the canvas
+            // to see if we're hovering over any of them.
+            // TODO: Culling & caching
+            for (auto& nandViewModel : canvasViewModel->m_NANDs)
+            {
+                // TODO: Handle zoom and pan
+                if (m_CursorPosition.x >= nandViewModel.position.x &&
+                    m_CursorPosition.x <= nandViewModel.position.x + nandViewModel.size.width &&
+                    m_CursorPosition.y >= nandViewModel.position.y &&
+                    m_CursorPosition.y <= nandViewModel.position.y + nandViewModel.size.height)
+                {
+                    // Component hovered
+                    spdlog::info("UIInputHandler::handleInput: nandViewModel={}", nandViewModel.toString());
+                }
             }
         }
 
@@ -92,12 +110,19 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
         {
             m_IsDragging = false;
         }
-    }
 
-    /*
-    const auto cursorX = ImGui::GetMousePos().x - ImGui::GetCursorScreenPos().x - ImGui::GetScrollX();
-    const auto cursorY = Config::kCanvasHeight + ImGui::GetMousePos().y - ImGui::GetCursorScreenPos().y - ImGui::GetScrollY();
-    */
+        if (action->getName() == "UIDragDropAction")
+        {
+            auto dragDropAction = static_cast<UIDragDropAction*>(action.get());
+            spdlog::info("UIInputHandler::handleInput: {}", dragDropAction->toString());
+        }
+
+        if (action->getName() == "UISimControlAction")
+        {
+            auto simControlAction = static_cast<UISimControlAction*>(action.get());
+            spdlog::info("UIInputHandler::handleInput: {}", simControlAction->toString());
+        }
+    }
 
     return events;
 }

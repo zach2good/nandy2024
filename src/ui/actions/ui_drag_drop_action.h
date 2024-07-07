@@ -13,6 +13,11 @@ struct UIDragDropAction final : public Action
 
     auto getName() const -> std::string override
     {
+        return "UIDragDropAction";
+    }
+
+    auto toString() const -> std::string override
+    {
         return fmt::format("UIDragDropAction: x={}, y={}, payload={}", x, y, payload);
     }
 
