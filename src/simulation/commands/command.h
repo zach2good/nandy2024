@@ -3,6 +3,7 @@
 #include "simulation/circuit.h"
 #include "simulation/commands/command.h"
 
+// A command is an operation on the circuit that can be executed, undone, and redone.
 class Command
 {
 public:
