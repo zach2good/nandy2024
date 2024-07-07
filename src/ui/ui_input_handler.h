@@ -60,14 +60,14 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
             m_CursorPosition = Position(moveAction->x, moveAction->y);
             m_CursorDelta    = Position(moveAction->dx, moveAction->dy);
 
-            if (!m_HasDragged)
-            {
-                events.emplace_back(std::make_unique<UIDragStartedEvent>());
-                m_HasDragged = true;
-            }
-
             if (m_IsDragging)
             {
+                if (!m_HasDragged)
+                {
+                    events.emplace_back(std::make_unique<UIDragStartedEvent>());
+                    m_HasDragged = true;
+                }
+
                 events.emplace_back(std::make_unique<UIDragUpdateEvent>());
             }
         }
