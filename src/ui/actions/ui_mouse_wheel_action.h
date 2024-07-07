@@ -20,7 +20,7 @@ struct UIMouseWheelAction final : public Action
         return fmt::format("UIMouseWheelAction: val={}", val);
     }
 
-private:
+    // private:
     f32 val;
 };
 

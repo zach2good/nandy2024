@@ -36,6 +36,7 @@ private:
 };
 
 inline CircuitRunner::CircuitRunner()
+: circuit_(std::make_unique<Circuit>())
 {
     start();
 }

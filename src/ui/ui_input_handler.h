@@ -71,6 +71,10 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
                 }
 
                 events.emplace_back(std::make_unique<UIDragUpdateEvent>());
+
+                // TODO: Should this be in here, or up one level?
+                canvasViewModel->m_Offset.dx += m_CursorDelta.dx;
+                canvasViewModel->m_Offset.dy += m_CursorDelta.dy;
             }
 
             // If the mouse has moved, we have to check the visible components on the canvas
@@ -78,11 +82,10 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
             // TODO: Culling & caching
             for (auto& nandViewModel : canvasViewModel->m_NANDs)
             {
-                // TODO: Handle zoom and pan
-                if (m_CursorPosition.x >= nandViewModel.position.x &&
-                    m_CursorPosition.x <= nandViewModel.position.x + nandViewModel.size.width &&
-                    m_CursorPosition.y >= nandViewModel.position.y &&
-                    m_CursorPosition.y <= nandViewModel.position.y + nandViewModel.size.height)
+                if (canvasViewModel->m_Offset.dx + nandViewModel.position.x * canvasViewModel->m_Zoom <= m_CursorPosition.x &&
+                    canvasViewModel->m_Offset.dy + nandViewModel.position.y * canvasViewModel->m_Zoom <= m_CursorPosition.y &&
+                    canvasViewModel->m_Offset.dx + nandViewModel.position.x * canvasViewModel->m_Zoom + nandViewModel.size.width * canvasViewModel->m_Zoom >= m_CursorPosition.x &&
+                    canvasViewModel->m_Offset.dy + nandViewModel.position.y * canvasViewModel->m_Zoom + nandViewModel.size.height * canvasViewModel->m_Zoom >= m_CursorPosition.y)
                 {
                     // Component hovered
                     spdlog::info("UIInputHandler::handleInput: nandViewModel={}", nandViewModel.toString());
@@ -121,6 +124,14 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
         {
             auto simControlAction = static_cast<UISimControlAction*>(action.get());
             spdlog::info("UIInputHandler::handleInput: {}", simControlAction->toString());
+        }
+
+        if (action->getName() == "UIMouseWheelAction")
+        {
+            auto wheelAction = static_cast<UIMouseWheelAction*>(action.get());
+            spdlog::info("UIInputHandler::handleInput: {}", wheelAction->toString());
+
+            canvasViewModel->m_Zoom += wheelAction->val * 0.1f;
         }
     }
 

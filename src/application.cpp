@@ -20,6 +20,8 @@ Application::Application(std::string const& title, usize width, usize height)
     m_UIRenderer       = std::make_unique<UIRenderer>(&*m_WindowRenderer);
     m_UIInputHandler   = std::make_unique<UIInputHandler>();
     m_CanvasController = std::make_unique<CanvasController>();
+
+    m_CanvasViewModel = CanvasViewModel::create(m_CircuitRunner->circuit());
 }
 
 Application::~Application()
@@ -60,10 +62,6 @@ void Application::handleInput()
                 break;
         }
     }
-
-    // Now that we've handled events from the "system", we can generate the view model
-    // for use by all other systems (UI, Canvas, etc.) this "tick".
-    m_CanvasViewModel = CanvasViewModel::create(m_CircuitRunner->circuit());
 }
 
 void Application::tick()
@@ -76,6 +74,7 @@ void Application::render()
     m_WindowRenderer->clear();
 
     m_WindowRenderer->setDrawToCanvas();
+    m_WindowRenderer->clear();
     m_CanvasViewModel->draw(&*m_WindowRenderer);
 
     m_WindowRenderer->setDrawToScreen();

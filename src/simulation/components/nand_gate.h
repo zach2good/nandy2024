@@ -4,5 +4,12 @@
 
 struct NandGate : public Component
 {
+    NandGate(Position position)
+    : position(position)
+    {
+    }
+
     virtual ~NandGate() = default;
+
+    Position position;
 };
