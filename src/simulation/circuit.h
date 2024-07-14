@@ -27,7 +27,6 @@ public:
 
 inline Circuit::Circuit()
 {
-    addNAND({ 100, 100 });
 }
 
 inline Circuit::~Circuit()

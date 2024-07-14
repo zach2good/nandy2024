@@ -21,7 +21,7 @@ struct UIDragDropAction final : public Action
         return fmt::format("UIDragDropAction: x={}, y={}, payload={}", x, y, payload);
     }
 
-private:
+    // private:
     f32         x;
     f32         y;
     std::string payload;

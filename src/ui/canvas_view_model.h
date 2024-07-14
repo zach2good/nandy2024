@@ -11,6 +11,7 @@ public:
     static std::unique_ptr<CanvasViewModel> create(Circuit& circuit);
 
     void draw(WindowRenderer* renderer);
+    void update();
 
     struct NANDViewModel final
     {
@@ -49,6 +50,8 @@ public:
 
     Delta m_Offset = { 0.0f, 0.0f };
     f32   m_Zoom   = 1.0f;
+
+    Circuit& m_Circuit;
 
 private:
     CanvasViewModel(Circuit& circuit);
@@ -91,16 +94,14 @@ inline void CanvasViewModel::draw(WindowRenderer* renderer)
 
 // TODO: Drawing and creation should be seperate?
 inline CanvasViewModel::CanvasViewModel(Circuit& circuit)
+: m_Circuit(circuit)
 {
-    // TODO: This is faked for now while I work on the UI
+}
 
-    // m_NANDs.push_back({ 1, { 100, 100 }, { 100, 100 }, Facing::Right });
-    // m_NANDs.push_back({ 2, { 250, 100 }, { 100, 100 }, Facing::Right });
-
-    // m_Wires.push_back({ 1, { 350, 350 }, { 450, 450 } });
-
+inline void CanvasViewModel::update()
+{
     u64 ids = 0;
-    for (auto& component : circuit.components)
+    for (auto& component : m_Circuit.components)
     {
         if (auto* nandGate = dynamic_cast<NandGate*>(component))
         {

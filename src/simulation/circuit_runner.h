@@ -23,6 +23,7 @@ public:
     void step();
 
     void sendCommand(std::unique_ptr<Command> command);
+    void sendCommands(std::vector<std::unique_ptr<Command>> commands);
     auto circuit() -> Circuit&;
 
 private:
@@ -91,6 +92,17 @@ inline void CircuitRunner::sendCommand(std::unique_ptr<Command> command)
     {
         std::unique_lock<std::mutex> lock(mutex_);
         commandQueue_.push(std::move(command));
+    }
+}
+
+inline void CircuitRunner::sendCommands(std::vector<std::unique_ptr<Command>> commands)
+{
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        for (auto& command : commands)
+        {
+            commandQueue_.push(std::move(command));
+        }
     }
 }
 

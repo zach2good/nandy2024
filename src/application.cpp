@@ -1,6 +1,8 @@
 #include "application.h"
 
 #include "simulation/circuit_runner.h"
+#include "simulation/commands/add_component_command.h"
+#include "simulation/commands/command.h"
 
 #include "ui/actions/action.h"
 #include "ui/actions/ui_close_requested_action.h"
@@ -12,6 +14,9 @@
 #include "ui/ui_input_handler.h"
 
 #include <SDL.h>
+
+#include <memory>
+#include <vector>
 
 Application::Application(std::string const& title, usize width, usize height)
 {
@@ -89,10 +94,18 @@ void Application::render()
         }
     }
 
+    auto commands = std::vector<std::unique_ptr<Command>>();
     for (auto& event : m_UIInputHandler->handleInput(&*m_CanvasViewModel, std::move(actions)))
     {
-        m_CanvasController->handleCanvasEvent(std::move(event));
+        for (auto& command : m_CanvasController->handleCanvasEvent(std::move(event)))
+        {
+            commands.push_back(std::move(command));
+        }
     }
+
+    m_CircuitRunner->sendCommands(std::move(commands));
+
+    m_CanvasViewModel->update();
 
     m_UIRenderer->present();
     m_WindowRenderer->present();

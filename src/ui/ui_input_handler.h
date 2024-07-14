@@ -8,6 +8,7 @@
 #include "ui/canvas_view_model.h"
 
 #include "ui/events/event.h"
+#include "ui/events/ui_drag_drop_event.h"
 #include "ui/events/ui_drag_ended_event.h"
 #include "ui/events/ui_drag_started_event.h"
 #include "ui/events/ui_drag_update_event.h"
@@ -117,7 +118,7 @@ inline auto UIInputHandler::handleInput(CanvasViewModel* canvasViewModel, std::v
         if (action->getName() == "UIDragDropAction")
         {
             auto dragDropAction = static_cast<UIDragDropAction*>(action.get());
-            spdlog::info("UIInputHandler::handleInput: {}", dragDropAction->toString());
+            events.emplace_back(std::make_unique<UIDragDropEvent>(dragDropAction->x, dragDropAction->y, dragDropAction->payload));
         }
 
         if (action->getName() == "UISimControlAction")
